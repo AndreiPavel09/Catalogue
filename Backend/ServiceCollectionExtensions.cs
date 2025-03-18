@@ -17,9 +17,12 @@ namespace Backend
 
             // Register repositories
             services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<ICourseRepository, CourseRepository>();
+            services.AddScoped<IGradeRepository, GradeRepository>();
 
             // Register services
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IAdminService, AdminService>();
 
             return services;
         }
