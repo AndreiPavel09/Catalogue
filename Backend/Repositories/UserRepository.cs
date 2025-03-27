@@ -10,8 +10,8 @@ namespace Backend.Repositories
     public interface IUserRepository
     {
         Task<List<User>> GetAllUsersAsync();
-        Task<User> GetUserByIdAsync(int id);
-        Task<User> GetUserByUsernameAsync(string username);
+        Task<User?> GetUserByIdAsync(int id);
+        Task<User?> GetUserByUsernameAsync(string username);
         Task<User> CreateUserAsync(User user);
         Task UpdateUserAsync(User user);
         Task DeleteUserAsync(int id);
@@ -32,12 +32,12 @@ namespace Backend.Repositories
             return await _context.Set<User>().ToListAsync();
         }
 
-        public async Task<User> GetUserByIdAsync(int id)
+        public async Task<User?> GetUserByIdAsync(int id)
         {
             return await _context.Set<User>().FindAsync(id);
         }
 
-        public async Task<User> GetUserByUsernameAsync(string username)
+        public async Task<User?> GetUserByUsernameAsync(string username)
         {
             return await _context.Set<User>()
                 .FirstOrDefaultAsync(u => u.Username == username);

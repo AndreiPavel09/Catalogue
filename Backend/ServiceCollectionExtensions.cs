@@ -1,6 +1,10 @@
 ﻿using Backend.Data;
 using Backend.Repositories;
+using Backend.Repositories.Implementations;
+using Backend.Repositories.Interfaces;
 using Backend.Services;
+using Backend.Services.Implementations;
+using Backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +27,7 @@ namespace Backend
             // Register services
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IAdminService, AdminService>();
+            services.AddScoped<IGradeService, GradeService>();
 
             return services;
         }
