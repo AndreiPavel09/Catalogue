@@ -1,23 +1,10 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Backend.Data;
+﻿using Backend.Data;
 using Backend.Models;
+using Backend.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace Backend.Repositories
+namespace Backend.Repositories.Implementations
 {
-    public interface IGradeRepository
-    {
-        Task<List<Grade>> GetAllGradesAsync();
-        Task<Grade> GetGradeByIdAsync(int id);
-        Task<List<Grade>> GetGradesByStudentIdAsync(int studentId);
-        Task<List<Grade>> GetGradesByCourseIdAsync(int courseId);
-        Task<Grade> CreateGradeAsync(Grade grade);
-        Task UpdateGradeAsync(Grade grade);
-        Task DeleteGradeAsync(int id);
-    }
-
     public class GradeRepository : IGradeRepository
     {
         private readonly ApplicationDbContext _context;
@@ -32,9 +19,12 @@ namespace Backend.Repositories
             return await _context.Grades.ToListAsync();
         }
 
-        public async Task<Grade> GetGradeByIdAsync(int id)
+        public async Task<Grade?> GetGradeByIdAsync(int id)
         {
-            return await _context.Grades.FindAsync(id);
+            return await _context.Grades
+                .Include(g => g.Student)
+                .Include(g => g.Course)
+                .FirstOrDefaultAsync(g => g.Id == id);
         }
 
         public async Task<List<Grade>> GetGradesByStudentIdAsync(int studentId)
@@ -53,7 +43,7 @@ namespace Backend.Repositories
 
         public async Task<Grade> CreateGradeAsync(Grade grade)
         {
-            _context.Grades.Add(grade);
+            await _context.Grades.AddAsync(grade);
             await _context.SaveChangesAsync();
             return grade;
         }
@@ -62,16 +52,19 @@ namespace Backend.Repositories
         {
             _context.Entry(grade).State = EntityState.Modified;
             await _context.SaveChangesAsync();
+
         }
 
-        public async Task DeleteGradeAsync(int id)
+        public async Task<bool> DeleteGradeAsync(int id)
         {
             var grade = await GetGradeByIdAsync(id);
             if (grade != null)
             {
                 _context.Grades.Remove(grade);
                 await _context.SaveChangesAsync();
+                return true;
             }
+            return false;
         }
     }
 }

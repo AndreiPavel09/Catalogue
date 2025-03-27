@@ -11,23 +11,26 @@ namespace Backend.Models
         public int Id { get; set; }
 
         [Required]
+
         public int StudentId { get; set; }
+
+        [ForeignKey("StudentId")]
+        public virtual Student Student { get; set; }
 
         [Required]
         public int CourseId { get; set; }
 
+        [ForeignKey("CourseId")]
+        public virtual Course Course { get; set; }
+
         [Required]
-        [Range(0, 100)]
+        [Range(0,10)]
         public decimal Value { get; set; }
 
         [Required]
         public DateTime Date { get; set; }
 
-        // Navigation properties
-        [ForeignKey("StudentId")]
-        public Student Student { get; set; }
+        
 
-        [ForeignKey("CourseId")]
-        public Course Course { get; set; }
     }
 }

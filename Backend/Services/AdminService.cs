@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Backend.Models;
 using Backend.Repositories;
 using Backend.DTOs;
+using Backend.Repositories.Interfaces;
+using Backend.Services.Interfaces;
 
 namespace Backend.Services
 {
@@ -34,15 +36,15 @@ namespace Backend.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly ICourseRepository _courseRepository;
-        private readonly IGradeRepository _gradeRepository;
+        private readonly IGradeService _gradeService;
         public AdminService(
             IUserRepository userRepository,
             ICourseRepository courseRepository,
-            IGradeRepository gradeRepository)
+            IGradeService gradeService)
         {
             _userRepository = userRepository;
             _courseRepository = courseRepository;
-            _gradeRepository = gradeRepository;
+            _gradeService = gradeService;
         }
 
         // Teacher management
@@ -239,51 +241,34 @@ namespace Backend.Services
         // Grade management
         public async Task<GradeDto> AddGradeAsync(CreateGradeDto gradeDto)
         {
-            // Verify the student exists
-            var student = await _userRepository.GetUserByIdAsync(gradeDto.StudentId);
-            if (student == null || student.Role != UserRole.Student)
-                throw new InvalidOperationException("Student not found");
-
-            // Verify the course exists
-            var course = await _courseRepository.GetCourseByIdAsync(gradeDto.CourseId);
-            if (course == null)
-                throw new InvalidOperationException("Course not found");
-
-            // Create grade
             var grade = new Grade
             {
                 StudentId = gradeDto.StudentId,
                 CourseId = gradeDto.CourseId,
                 Value = gradeDto.Value,
-                Date = gradeDto.Date ?? DateTime.Now
             };
 
-            // Save to database
-            await _gradeRepository.CreateGradeAsync(grade);
+            var createdGrade = await _gradeService.CreateGradeAsync(grade);
 
-            // Return DTO
-            return new GradeDto
+            var resultDto = new GradeDto
             {
-                Id = grade.Id,
-                StudentId = grade.StudentId,
-                CourseId = grade.CourseId,
-                Value = grade.Value,
-                Date = grade.Date
+                Id = createdGrade.Id,
+                StudentId = createdGrade.StudentId,
+                CourseId = createdGrade.CourseId,
+                Value = createdGrade.Value,
             };
+
+            return resultDto;
         }
 
         public async Task DeleteGradeAsync(int gradeId)
         {
-            var grade = await _gradeRepository.GetGradeByIdAsync(gradeId);
-            if (grade == null)
-                throw new InvalidOperationException("Grade not found");
-
-            await _gradeRepository.DeleteGradeAsync(gradeId);
+           await _gradeService.DeleteGradeAsync(gradeId);
         }
 
         public async Task<List<GradeDto>> ViewGradesAsync()
         {
-            var grades = await _gradeRepository.GetAllGradesAsync();
+            var grades = await _gradeService.GetAllGradesAsync();
             var gradeDtos = new List<GradeDto>();
 
             foreach (var grade in grades)
@@ -294,7 +279,6 @@ namespace Backend.Services
                     StudentId = grade.StudentId,
                     CourseId = grade.CourseId,
                     Value = grade.Value,
-                    Date = grade.Date
                 });
             }
 
