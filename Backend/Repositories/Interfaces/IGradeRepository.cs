@@ -6,7 +6,7 @@ namespace Backend.Repositories.Interfaces
     {
       
             Task<List<Grade>> GetAllGradesAsync();
-            Task<Grade> GetGradeByIdAsync(int id);
+            Task<Grade?> GetGradeByIdAsync(int id);
             Task<List<Grade>> GetGradesByStudentIdAsync(int studentId);
             Task<List<Grade>> GetGradesByCourseIdAsync(int courseId);
             Task<Grade> CreateGradeAsync(Grade grade);

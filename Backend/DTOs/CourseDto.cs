@@ -3,12 +3,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Backend.DTOs
 {
-    // Course DTOs
     public class CourseDto
     {
         public int Id { get; set; }
-        public string Title { get; set; }
-        public string Description { get; set; }
+        public required string Title { get; set; }
         public int TeacherId { get; set; }
     }
 
@@ -16,10 +14,7 @@ namespace Backend.DTOs
     {
         [Required]
         [StringLength(100)]
-        public string Title { get; set; }
-
-        [StringLength(1000)]
-        public string Description { get; set; }
+        public required string Title { get; set; }
 
         [Required]
         public int TeacherId { get; set; }
@@ -27,12 +22,11 @@ namespace Backend.DTOs
 
     public class UpdateCourseDto
     {
+        [Required]
         [StringLength(100)]
-        public string Title { get; set; }
+        public required string Title { get; set; }
 
-        [StringLength(1000)]
-        public string Description { get; set; }
-
-        public int? TeacherId { get; set; }
+        [Required]
+        public int TeacherId { get; set; }
     }
 }

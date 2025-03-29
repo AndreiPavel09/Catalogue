@@ -43,16 +43,7 @@ namespace Backend.Models
         // Additional student-specific properties can be added here
     }
 
-    //Teacher class inheriting from User
-    public class Teacher : User
-    {
-        public Teacher()
-        {
-            Role = UserRole.Teacher;
-        }
-
-        // Additional teacher-specific properties can be added here
-    }
+    
 
     // Enum for user roles
     public enum UserRole
