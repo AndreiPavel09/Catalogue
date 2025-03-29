@@ -126,7 +126,6 @@ namespace Backend.Services
             var course = new Course
             {
                 Title = courseDto.Title,
-                Description = courseDto.Description,
                 TeacherId = courseDto.TeacherId
             };
 
@@ -138,7 +137,6 @@ namespace Backend.Services
             {
                 Id = course.Id,
                 Title = course.Title,
-                Description = course.Description,
                 TeacherId = course.TeacherId
             };
         }
@@ -163,7 +161,6 @@ namespace Backend.Services
                 {
                     Id = course.Id,
                     Title = course.Title,
-                    Description = course.Description,
                     TeacherId = course.TeacherId
                 });
             }

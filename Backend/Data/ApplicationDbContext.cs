@@ -76,7 +76,7 @@ namespace Backend.Data
 
             modelBuilder.Entity<Grade>()
                 .HasOne(g => g.Course)
-                .WithMany(c => c.Grades)
+                .WithMany()
                 .HasForeignKey(g => g.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
