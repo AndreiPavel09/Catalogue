@@ -124,7 +124,7 @@ namespace Backend.Services
                 Username = user.Username,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                Role = user.Role.ToString()
+                Role = user.UserRole.ToString()
             };
         }
     }

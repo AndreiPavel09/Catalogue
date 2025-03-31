@@ -1,9 +1,11 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Backend.Models
 {
     // Base User class that will be inherited by Student and Teacher
+    [Table("Users")]
     public abstract class User
     {
         [Key]
@@ -26,7 +28,7 @@ namespace Backend.Models
         public string Password { get; set; }
 
         [Required]
-        public UserRole Role { get; set; }
+        public UserRole UserRole { get; set; }
 
         // Full name property for convenience
         public string FullName => $"{FirstName} {LastName}";
@@ -35,15 +37,19 @@ namespace Backend.Models
     // Student class inheriting from User
     public class Student : User
     {
+        public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
+        public ICollection<Grade> Grades { get; set; } = new List<Grade>();
+
         public Student()
         {
-            Role = UserRole.Student;
+            UserRole = UserRole.Student;
+
         }
 
         // Additional student-specific properties can be added here
     }
 
-    
+
 
     // Enum for user roles
     public enum UserRole
