@@ -32,7 +32,7 @@ namespace Backend.Controllers
                 courseDtos.Add(new CourseDto
                 {
                     Id = course.Id,
-                    Title = course.Title,
+                    Title = course.CourseName,
                     TeacherId = course.TeacherId
                 });
             }
@@ -52,7 +52,7 @@ namespace Backend.Controllers
             var courseDto = new CourseDto
             {
                 Id = course.Id,
-                Title = course.Title,
+                Title = course.CourseName,
                 TeacherId = course.TeacherId
             };
 
@@ -63,7 +63,7 @@ namespace Backend.Controllers
         {
             var course = new Course
             {
-                Title = createCourseDto.Title,
+                CourseName = createCourseDto.Title,
                 TeacherId = createCourseDto.TeacherId
             };
 
@@ -72,7 +72,7 @@ namespace Backend.Controllers
             var courseDto = new CourseDto
             {
                 Id = createdCourse.Id,
-                Title = createdCourse.Title,
+                Title = createdCourse.CourseName,
                 TeacherId = createdCourse.TeacherId
             };
 
@@ -88,7 +88,7 @@ namespace Backend.Controllers
                 return NotFound();
             }
 
-            existingCourse.Title = updateCourseDto.Title;
+            existingCourse.CourseName = updateCourseDto.Title;
             existingCourse.TeacherId = updateCourseDto.TeacherId;
 
             await _courseService.UpdateCourseAsync(existingCourse);

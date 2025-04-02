@@ -21,43 +21,44 @@ namespace Backend.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure the User as the base entity for TPH (Table-per-Hierarchy) inheritance
-            modelBuilder.Entity<User>()
-                .ToTable("Users")
-                .HasDiscriminator<string>("UserType")
-                .HasValue<Student>("Student")
-                .HasValue<Teacher>("Teacher")
-                .HasValue<Admin>("Admin");
+            var userEntity = modelBuilder.Entity<User>();
 
-            // Configure properties
-            modelBuilder.Entity<User>()
-                .Property(u => u.Username)
-                .IsRequired();
+            // 1. Define the table name for the hierarchy
+            userEntity.ToTable("Users");
 
-            modelBuilder.Entity<User>()
-                .Property(u => u.FirstName)
-                .IsRequired();
+            userEntity
+                .HasDiscriminator(u => u.UserRole)  // Column name and type
+                .HasValue<Student>(UserRole.Student) // Use Enum.ToString() for safety
+                .HasValue<Teacher>(UserRole.Teacher)
+                .HasValue<Admin>(UserRole.Admin);
 
-            modelBuilder.Entity<User>()
-                .Property(u => u.LastName)
-                .IsRequired();
+            userEntity
+                .Property(u => u.UserRole)
+                .HasConversion<string>();
 
-            modelBuilder.Entity<User>()
-                .Property(u => u.Password)
-                .IsRequired();
-
-            // Add a unique constraint on Username
+            // ✅ Ensure unique usernames
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Username)
                 .IsUnique();
 
-            // Configure StudentCourse (Many-to-Many relationship)
+            // ✅ Configure inheritance for Users
+            modelBuilder.Entity<User>()
+                .UseTphMappingStrategy(); // Use Table-Per-Hierarchy (TPH) mapping correctly
+
+            // ✅ Configure Course relationships
+            modelBuilder.Entity<Course>()
+                .HasOne(c => c.Teacher)
+                .WithMany(t => t.Courses)
+                .HasForeignKey(c => c.TeacherId)
+                .OnDelete(DeleteBehavior.Restrict); // Prevents cascade delete
+
+            // ✅ Configure StudentCourse (Many-to-Many relationship)
             modelBuilder.Entity<StudentCourse>()
                 .HasKey(sc => new { sc.StudentId, sc.CourseId });
 
             modelBuilder.Entity<StudentCourse>()
                 .HasOne(sc => sc.Student)
-                .WithMany()
+                .WithMany(s => s.StudentCourses)
                 .HasForeignKey(sc => sc.StudentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -67,10 +68,10 @@ namespace Backend.Data
                 .HasForeignKey(sc => sc.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure Grade relationships
+            // ✅ Configure Grade relationships
             modelBuilder.Entity<Grade>()
                 .HasOne(g => g.Student)
-                .WithMany()
+                .WithMany(s => s.Grades)
                 .HasForeignKey(g => g.StudentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -80,5 +81,6 @@ namespace Backend.Data
                 .HasForeignKey(g => g.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
+
     }
 }

@@ -13,7 +13,7 @@ namespace Backend.Models
 
         [Required]
         [StringLength(100)]
-        public required string Title { get; set; }
+        public string CourseName { get; set; }
 
         [Required]
         public int TeacherId { get; set; }

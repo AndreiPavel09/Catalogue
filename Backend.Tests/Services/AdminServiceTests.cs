@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Backend.DTOs;
 using Backend.Models;
 using Backend.Repositories;
+using Backend.Repositories.Interfaces;
 using Backend.Services;
 using Moq;
 using Xunit;
@@ -158,7 +159,6 @@ namespace Backend.Tests.Services
             var courseDto = new CreateCourseDto
             {
                 Title = "Math 101",
-                Description = "Introduction to Mathematics",
                 TeacherId = 1
             };
             
@@ -194,7 +194,6 @@ namespace Backend.Tests.Services
             var courseDto = new CreateCourseDto
             {
                 Title = "Math 101",
-                Description = "Introduction to Mathematics",
                 TeacherId = 999 // Non-existent teacher
             };
             
@@ -256,8 +255,7 @@ namespace Backend.Tests.Services
             {
                 StudentId = 1,
                 CourseId = 1,
-                Value = 85,
-                Date = DateTime.Now
+                Value = 85
             };
             
             Grade createdGrade = null;

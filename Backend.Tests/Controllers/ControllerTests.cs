@@ -275,7 +275,6 @@ namespace Backend.Tests.Controllers
             var courseDto = new CreateCourseDto
             {
                 Title = "Math 101",
-                Description = "Introduction to Mathematics",
                 TeacherId = 1
             };
             
@@ -283,7 +282,6 @@ namespace Backend.Tests.Controllers
             { 
                 Id = 1, 
                 Title = "Math 101", 
-                Description = "Introduction to Mathematics", 
                 TeacherId = 1 
             };
             

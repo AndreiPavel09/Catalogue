@@ -36,11 +36,15 @@ namespace Backend.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly ICourseRepository _courseRepository;
-        private readonly IGradeService _gradeService;
+        private readonly IGradeRepository _gradeService;
+        private IUserRepository object1;
+        private ICourseRepository object2;
+        private IGradeRepository object3;
+
         public AdminService(
             IUserRepository userRepository,
             ICourseRepository courseRepository,
-            IGradeService gradeService)
+            IGradeRepository gradeService)
         {
             _userRepository = userRepository;
             _courseRepository = courseRepository;
@@ -78,14 +82,14 @@ namespace Backend.Services
                 Username = teacher.Username,
                 FirstName = teacher.FirstName,
                 LastName = teacher.LastName,
-                Role = teacher.Role.ToString()
+                Role = teacher.UserRole.ToString()
             };
         }
 
         public async Task DeleteTeacherAsync(int teacherId)
         {
             var teacher = await _userRepository.GetUserByIdAsync(teacherId);
-            if (teacher == null || teacher.Role != UserRole.Teacher)
+            if (teacher == null || teacher.UserRole != UserRole.Teacher)
                 throw new InvalidOperationException("Teacher not found");
 
             await _userRepository.DeleteUserAsync(teacherId);
@@ -98,7 +102,7 @@ namespace Backend.Services
 
             foreach (var user in users)
             {
-                if (user.Role == UserRole.Teacher)
+                if (user.UserRole == UserRole.Teacher)
                 {
                     teacherDtos.Add(new UserDto
                     {
@@ -106,7 +110,7 @@ namespace Backend.Services
                         Username = user.Username,
                         FirstName = user.FirstName,
                         LastName = user.LastName,
-                        Role = user.Role.ToString()
+                        Role = user.UserRole.ToString()
                     });
                 }
             }
@@ -119,13 +123,13 @@ namespace Backend.Services
         {
             // Verify the teacher exists
             var teacher = await _userRepository.GetUserByIdAsync(courseDto.TeacherId);
-            if (teacher == null || teacher.Role != UserRole.Teacher)
+            if (teacher == null || teacher.UserRole != UserRole.Teacher)
                 throw new InvalidOperationException("Teacher not found");
 
             // Create course
             var course = new Course
             {
-                Title = courseDto.Title,
+                CourseName = courseDto.Title,
                 TeacherId = courseDto.TeacherId
             };
 
@@ -136,7 +140,7 @@ namespace Backend.Services
             return new CourseDto
             {
                 Id = course.Id,
-                Title = course.Title,
+                Title = course.CourseName,
                 TeacherId = course.TeacherId
             };
         }
@@ -160,7 +164,7 @@ namespace Backend.Services
                 courseDtos.Add(new CourseDto
                 {
                     Id = course.Id,
-                    Title = course.Title,
+                    Title = course.CourseName,
                     TeacherId = course.TeacherId
                 });
             }
@@ -199,14 +203,14 @@ namespace Backend.Services
                 Username = student.Username,
                 FirstName = student.FirstName,
                 LastName = student.LastName,
-                Role = student.Role.ToString()
+                Role = student.UserRole.ToString()
             };
         }
 
         public async Task DeleteStudentAsync(int studentId)
         {
             var student = await _userRepository.GetUserByIdAsync(studentId);
-            if (student == null || student.Role != UserRole.Student)
+            if (student == null || student.UserRole != UserRole.Student)
                 throw new InvalidOperationException("Student not found");
 
             await _userRepository.DeleteUserAsync(studentId);
@@ -219,7 +223,7 @@ namespace Backend.Services
 
             foreach (var user in users)
             {
-                if (user.Role == UserRole.Student)
+                if (user.UserRole == UserRole.Student)
                 {
                     studentDtos.Add(new UserDto
                     {
@@ -227,7 +231,7 @@ namespace Backend.Services
                         Username = user.Username,
                         FirstName = user.FirstName,
                         LastName = user.LastName,
-                        Role = user.Role.ToString()
+                        Role = user.UserRole.ToString()
                     });
                 }
             }

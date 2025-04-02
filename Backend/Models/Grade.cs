@@ -26,11 +26,6 @@ namespace Backend.Models
         [Required]
         [Range(0,10)]
         public decimal Value { get; set; }
-
-        [Required]
-        public DateTime Date { get; set; }
-
         
-
     }
 }

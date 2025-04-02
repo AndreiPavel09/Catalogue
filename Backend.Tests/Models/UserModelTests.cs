@@ -14,7 +14,7 @@ namespace Backend.Tests.Models
             var student = new Student();
 
             // Assert
-            Assert.Equal(UserRole.Student, student.Role);
+            Assert.Equal(UserRole.Student, student.UserRole);
         }
 
         [Fact]
@@ -24,7 +24,7 @@ namespace Backend.Tests.Models
             var teacher = new Teacher();
 
             // Assert
-            Assert.Equal(UserRole.Teacher, teacher.Role);
+            Assert.Equal(UserRole.Teacher, teacher.UserRole);
         }
 
         [Fact]
@@ -34,7 +34,7 @@ namespace Backend.Tests.Models
             var admin = new Admin();
 
             // Assert
-            Assert.Equal(UserRole.Admin, admin.Role);
+            Assert.Equal(UserRole.Admin, admin.UserRole);
         }
 
         [Fact]

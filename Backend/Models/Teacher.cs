@@ -2,9 +2,10 @@
 {
     public class Teacher : User
     {
+        public ICollection<Course> Courses { get; set; } = new List<Course>();
         public Teacher()
         {
-            Role = UserRole.Teacher;
+            UserRole = UserRole.Teacher;
         }
 
         // Additional teacher-specific properties can be added here
