@@ -1,5 +1,6 @@
 ﻿using Backend.Data;
 using Backend.DTOs;
+using Backend.DTOs.Backend.DTOs;
 using Backend.Models;
 using Backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization; // Required for authorization
@@ -53,7 +54,7 @@ namespace Backend.Controllers
 
         // GET: api/teachers/{teacherId}/courses/{courseId}/students
         [HttpGet("courses/{courseId}/students")]
-        public async Task<ActionResult<IEnumerable<StudentDto>>> GetStudentsInCourse(int teacherId, int courseId)
+        public async Task<ActionResult<IEnumerable<StudentDTO>>> GetStudentsInCourse(int teacherId, int courseId)
         {
             try
             {
