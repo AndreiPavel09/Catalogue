@@ -71,7 +71,7 @@ namespace Backend.Data
             // ✅ Configure Grade relationships
             modelBuilder.Entity<Grade>()
                 .HasOne(g => g.Student)
-                .WithMany(s => s.Grades)
+                .WithMany()
                 .HasForeignKey(g => g.StudentId)
                 .OnDelete(DeleteBehavior.Restrict);
 

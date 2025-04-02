@@ -24,12 +24,16 @@ namespace Backend
             services.AddScoped<ICourseRepository, CourseRepository>();
             services.AddScoped<IGradeRepository, GradeRepository>();
             services.AddScoped<ICourseRepository, CourseRepository>();
+            services.AddScoped<IStudentRepository, StudentRepository>();
+
 
             // Register services
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IAdminService, AdminService>();
             services.AddScoped<IGradeService, GradeService>();
             services.AddScoped<ICourseService, CourseService>();
+            services.AddScoped<IStudentService, StudentService>();
+
 
             return services;
         }
