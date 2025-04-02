@@ -34,22 +34,6 @@ namespace Backend.Models
         public string FullName => $"{FirstName} {LastName}";
     }
 
-    // Student class inheriting from User
-    public class Student : User
-    {
-        public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
-        public ICollection<Grade> Grades { get; set; } = new List<Grade>();
-
-        public Student()
-        {
-            UserRole = UserRole.Student;
-
-        }
-
-        // Additional student-specific properties can be added here
-    }
-
-
 
     // Enum for user roles
     public enum UserRole
