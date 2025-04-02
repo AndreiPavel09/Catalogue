@@ -32,8 +32,8 @@ namespace Backend
             services.AddScoped<IAdminService, AdminService>();
             services.AddScoped<IGradeService, GradeService>();
             services.AddScoped<ICourseService, CourseService>();
+            services.AddScoped<ITeacherService, TeacherService>();
             services.AddScoped<IStudentService, StudentService>();
-
 
             return services;
         }

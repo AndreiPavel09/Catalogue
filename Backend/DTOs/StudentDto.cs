@@ -1,3 +1,5 @@
+﻿namespace Backend.DTOs
+{
 ﻿using System.ComponentModel.DataAnnotations;
 
 namespace Backend.DTOs
@@ -36,6 +38,5 @@ namespace Backend.DTOs
         public string FirstName { get; set; }
 
         public string LastName { get; set; }
-
     }
 }
