@@ -129,7 +129,7 @@ namespace Backend.Services
             // Create course
             var course = new Course
             {
-                CourseName = courseDto.Title,
+                CourseName = courseDto.CourseName,
                 TeacherId = courseDto.TeacherId
             };
 
@@ -140,7 +140,7 @@ namespace Backend.Services
             return new CourseDto
             {
                 Id = course.Id,
-                Title = course.CourseName,
+                CourseName = course.CourseName,
                 TeacherId = course.TeacherId
             };
         }
@@ -164,7 +164,7 @@ namespace Backend.Services
                 courseDtos.Add(new CourseDto
                 {
                     Id = course.Id,
-                    Title = course.CourseName,
+                    CourseName = course.CourseName,
                     TeacherId = course.TeacherId
                 });
             }

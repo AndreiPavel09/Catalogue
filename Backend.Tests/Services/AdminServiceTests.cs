@@ -158,7 +158,7 @@ namespace Backend.Tests.Services
             var teacher = new Teacher { Id = 1 };
             var courseDto = new CreateCourseDto
             {
-                Title = "Math 101",
+                CourseName = "Math 101",
                 TeacherId = 1
             };
             
@@ -181,7 +181,7 @@ namespace Backend.Tests.Services
             // Assert
             Assert.NotNull(result);
             Assert.Equal(1, result.Id);
-            Assert.Equal("Math 101", result.Title);
+            Assert.Equal("Math 101", result.CourseName);
             Assert.Equal(1, result.TeacherId);
             
             _mockCourseRepository.Verify(repo => repo.CreateCourseAsync(It.IsAny<Course>()), Times.Once);
@@ -193,7 +193,7 @@ namespace Backend.Tests.Services
             // Arrange
             var courseDto = new CreateCourseDto
             {
-                Title = "Math 101",
+                CourseName = "Math 101",
                 TeacherId = 999 // Non-existent teacher
             };
             

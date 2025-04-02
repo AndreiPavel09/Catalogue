@@ -274,14 +274,14 @@ namespace Backend.Tests.Controllers
             // Arrange
             var courseDto = new CreateCourseDto
             {
-                Title = "Math 101",
+                CourseName = "Math 101",
                 TeacherId = 1
             };
             
             var createdCourse = new CourseDto 
             { 
                 Id = 1, 
-                Title = "Math 101", 
+                CourseName = "Math 101", 
                 TeacherId = 1 
             };
             
@@ -295,7 +295,7 @@ namespace Backend.Tests.Controllers
             var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
             var returnedCourse = Assert.IsType<CourseDto>(createdAtActionResult.Value);
             Assert.Equal(1, returnedCourse.Id);
-            Assert.Equal("Math 101", returnedCourse.Title);
+            Assert.Equal("Math 101", returnedCourse.CourseName);
         }
     }
 }

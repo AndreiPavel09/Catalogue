@@ -6,7 +6,7 @@ namespace Backend.DTOs
     public class CourseDto
     {
         public int Id { get; set; }
-        public required string Title { get; set; }
+        public required string CourseName { get; set; }
         public int TeacherId { get; set; }
     }
 
@@ -14,7 +14,7 @@ namespace Backend.DTOs
     {
         [Required]
         [StringLength(100)]
-        public required string Title { get; set; }
+        public required string CourseName { get; set; }
 
         [Required]
         public int TeacherId { get; set; }
@@ -24,7 +24,7 @@ namespace Backend.DTOs
     {
         [Required]
         [StringLength(100)]
-        public required string Title { get; set; }
+        public required string CourseName { get; set; }
 
         [Required]
         public int TeacherId { get; set; }
