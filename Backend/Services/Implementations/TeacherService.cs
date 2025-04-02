@@ -1,5 +1,6 @@
 ﻿using Backend.Data;
 using Backend.DTOs;
+using Backend.DTOs.Backend.DTOs;
 using Backend.Models;
 using Backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -58,7 +59,7 @@ namespace Backend.Services.Implementations
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<StudentDto>> GetStudentsInCourseAsync(int teacherId, int courseId)
+        public async Task<IEnumerable<StudentDTO>> GetStudentsInCourseAsync(int teacherId, int courseId)
         {
             // 1. Validate Teacher teaches this course (throws if not authorized)
             await ValidateTeacherTeachesCourseAsync(teacherId, courseId);
@@ -67,7 +68,7 @@ namespace Backend.Services.Implementations
             return await _context.StudentCourses
                 .Where(sc => sc.CourseId == courseId)
                 .Include(sc => sc.Student)
-                .Select(sc => new StudentDto
+                .Select(sc => new StudentDTO
                 {
                     Id = sc.Student.Id,
                     Username = sc.Student.Username,
