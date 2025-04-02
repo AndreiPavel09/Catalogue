@@ -21,16 +21,20 @@ namespace Backend.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<User>()
-        .Property(u => u.UserRole)
-        .HasConversion<string>();
+            var userEntity = modelBuilder.Entity<User>();
 
-            modelBuilder.Entity<User>()
-                .ToTable("Users")
-                .HasDiscriminator<string>("UserRole")
-                .HasValue<Student>("Student")
-                .HasValue<Teacher>("Teacher")
-                .HasValue<Admin>("Admin");
+            // 1. Define the table name for the hierarchy
+            userEntity.ToTable("Users");
+
+            userEntity
+                .HasDiscriminator(u => u.UserRole)  // Column name and type
+                .HasValue<Student>(UserRole.Student) // Use Enum.ToString() for safety
+                .HasValue<Teacher>(UserRole.Teacher)
+                .HasValue<Admin>(UserRole.Admin);
+
+            userEntity
+                .Property(u => u.UserRole)
+                .HasConversion<string>();
 
             // ✅ Ensure unique usernames
             modelBuilder.Entity<User>()
