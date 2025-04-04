@@ -1,0 +1,179 @@
+﻿@using FrontEnd.DTOs
+@using FrontEnd.Services
+@* No need for FrontEnd.Extensions here unless you display FullName, which we aren't below *@
+@inject AdminApiClient ApiClient
+
+@rendermode InteractiveWebAssembly
+
+<h3>Student Management</h3> @* <-- Correct Title *@
+
+@if (isLoading)
+{
+    <p><em>Loading students...</em></p>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else
+{
+    <h4>Add New Student</h4> @* <-- Correct Entity *@
+    @* Use newStudent model of type CreateUserDto *@
+    <EditForm Model="newStudent" OnValidSubmit="HandleAddStudentAsync" FormName="AddStudentForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label for="studentUsername" class="form-label">Username:</label>
+            <InputText id="studentUsername" @bind-Value="newStudent.Username" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label for="studentPassword" class="form-label">Password:</label>
+            <InputText type="password" id="studentPassword" @bind-Value="newStudent.Password" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label for="studentFirstName" class="form-label">First Name:</label>
+            <InputText id="studentFirstName" @bind-Value="newStudent.FirstName" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label for="studentLastName" class="form-label">Last Name:</label>
+            <InputText id="studentLastName" @bind-Value="newStudent.LastName" class="form-control" />
+        </div>
+        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">@(isSubmitting ? "Adding..." : "Add Student")</button>
+    </EditForm>
+
+    <hr />
+
+    <h4>Existing Students</h4> @* <-- Correct Entity *@
+    @if (students == null || !students.Any())
+    {
+        <p>No students found.</p>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @* Iterate through the students list *@
+                @foreach (var student in students)
+                {
+                    <tr>
+                        <td>@student.Id</td>
+                        <td>@student.Username</td>
+                        <td>@student.FirstName</td>
+                        <td>@student.LastName</td>
+                        <td>
+                            @* Call HandleDeleteStudentAsync with student.Id *@
+                            <button class="btn btn-danger btn-sm" @onclick="() => HandleDeleteStudentAsync(student.Id)" disabled="@isSubmitting">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private List<UserDto>? students; // List of students
+    private CreateUserDto newStudent = new() { Role = "Student" }; // DTO for adding students
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStudentsAsync(); // Load student data
+    }
+
+    private async Task LoadStudentsAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            students = await ApiClient.GetStudentsAsync(); // Call API to get students
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading students: {ex.Message}";
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            isLoading = false;
+            // StateHasChanged(); // Not always needed here, Blazor handles it
+        }
+    }
+
+    private async Task HandleAddStudentAsync() // Method to add student
+    {
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            newStudent.Role = "Student"; // Ensure role is set correctly
+            var response = await ApiClient.AddStudentAsync(newStudent); // Call API to add student
+
+            if (response.IsSuccessStatusCode)
+            {
+                newStudent = new() { Role = "Student" }; // Reset form
+                await LoadStudentsAsync(); // Refresh list
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Error adding student: {response.StatusCode} - {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error adding student: {ex.Message}";
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            isSubmitting = false;
+            // StateHasChanged(); // Not needed after await
+        }
+    }
+
+    private async Task HandleDeleteStudentAsync(int studentId) // Method to delete student
+    {
+        // Optional: Add confirmation dialog
+
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            var response = await ApiClient.DeleteStudentAsync(studentId); // Call API to delete student
+
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadStudentsAsync(); // Refresh list
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Error deleting student: {response.StatusCode} - {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting student: {ex.Message}";
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            isSubmitting = false;
+            // StateHasChanged(); // Not needed after await
+        }
+    }
+}

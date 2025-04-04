@@ -1,0 +1,205 @@
+﻿@using FrontEnd.Extensions // Add this line
+@using FrontEnd.DTOs
+@using FrontEnd.Services
+@inject AdminApiClient ApiClient
+
+@rendermode InteractiveWebAssembly
+
+<h3>Grade Management</h3>
+
+@if (isLoading)
+{
+    <p><em>Loading data...</em></p>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else
+{
+    <h4>Add New Grade</h4>
+    <EditForm Model="newGrade" OnValidSubmit="HandleAddGradeAsync" FormName="AddGradeForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+         <div class="mb-3">
+            <label for="studentSelect" class="form-label">Assign Student:</label>
+            <InputSelect id="studentSelect" @bind-Value="newGrade.StudentId" class="form-select">
+                <option value="0">-- Select Student --</option>
+                @if (availableStudents != null)
+                {
+                    @foreach (var student in availableStudents)
+                    {
+                        <option value="@student.Id">@student.FirstName @student.LastName (@student.Username)</option>
+                    }
+                }
+            </InputSelect>
+        </div>
+
+         <div class="mb-3">
+            <label for="courseSelect" class="form-label">Assign Course:</label>
+            <InputSelect id="courseSelect" @bind-Value="newGrade.CourseId" class="form-select">
+                <option value="0">-- Select Course --</option>
+                @if (availableCourses != null)
+                {
+                    @foreach (var course in availableCourses)
+                    {
+                        <option value="@course.Id">@course.CourseName</option>
+                    }
+                }
+            </InputSelect>
+        </div>
+
+        <div class="mb-3">
+            <label for="gradeValue" class="form-label">Grade Value:</label>
+            <InputNumber id="gradeValue" @bind-Value="newGrade.Value" class="form-control" step="0.01" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">@(isSubmitting ? "Adding..." : "Add Grade")</button>
+    </EditForm>
+
+    <hr />
+
+    <h4>Existing Grades</h4>
+    @if (grades == null || !grades.Any())
+    {
+        <p>No grades found.</p>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Student</th>
+                    <th>Course</th>
+                    <th>Value</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var grade in grades)
+                {
+                    <tr>
+                        <td>@grade.Id</td>
+                        @* Corrected usage with () and null propagation *@
+                        <td>@(availableStudents?.FirstOrDefault(s => s.Id == grade.StudentId)?.FullName() ?? $"ID: {grade.StudentId}")</td>
+                        <td>@(availableCourses?.FirstOrDefault(c => c.Id == grade.CourseId)?.CourseName ?? $"ID: {grade.CourseId}")</td>
+                        <td>@grade.Value.ToString("N2")</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" @onclick="() => HandleDeleteGradeAsync(grade.Id)" disabled="@isSubmitting">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private List<GradeDto>? grades;
+    private List<UserDto>? availableStudents;
+    private List<CourseDto>? availableCourses;
+    private CreateGradeDto newGrade = new();
+
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            var gradesTask = ApiClient.GetGradesAsync();
+            var studentsTask = ApiClient.GetStudentsAsync();
+            var coursesTask = ApiClient.GetCoursesAsync();
+
+            await Task.WhenAll(gradesTask, studentsTask, coursesTask);
+
+            grades = gradesTask.Result;
+            availableStudents = studentsTask.Result;
+            availableCourses = coursesTask.Result;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading data: {ex.Message}";
+            Console.WriteLine(ex); // Log error
+        }
+        finally
+        {
+            isLoading = false;
+            // StateHasChanged is called automatically by Blazor lifecycle methods
+            // and after awaiting component methods like HandleAdd/Delete.
+            // You might not strictly need it here, but it doesn't hurt.
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleAddGradeAsync()
+    {
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            var response = await ApiClient.AddGradeAsync(newGrade);
+
+            if (response.IsSuccessStatusCode)
+            {
+                newGrade = new(); // Reset form
+                await LoadDataAsync(); // Refresh list
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Error adding grade: {response.StatusCode} - {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error adding grade: {ex.Message}";
+            Console.WriteLine(ex); // Log error
+        }
+        finally
+        {
+            isSubmitting = false;
+            // StateHasChanged(); // Implicitly called after await
+        }
+    }
+
+    private async Task HandleDeleteGradeAsync(int gradeId)
+    {
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            var response = await ApiClient.DeleteGradeAsync(gradeId);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadDataAsync(); // Refresh list
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Error deleting grade: {response.StatusCode} - {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting grade: {ex.Message}";
+            Console.WriteLine(ex); // Log error
+        }
+        finally
+        {
+            isSubmitting = false;
+            // StateHasChanged(); // Implicitly called after await
+        }
+    }
+}
