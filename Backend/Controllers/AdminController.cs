@@ -40,11 +40,33 @@ namespace Backend.Controllers
             try
             {
                 await _adminService.DeleteTeacherAsync(id);
-                return NoContent();
+                return NoContent(); // 204 Success, no content to return
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(ex.Message);
+                // Check if the exception is the specific one for assigned courses
+                if (ex.Message.StartsWith("Cannot delete teacher"))
+                {
+                    // Return 400 Bad Request with the specific error message
+                    return BadRequest(new { message = ex.Message });
+                }
+                else // Assume it's the "Teacher not found" case from the service
+                {
+                    return NotFound(new { message = ex.Message }); // 404 Not Found
+                }
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
+            {
+                // Catch unexpected database errors during the delete (though our check should prevent the common ones)
+                // Log the detailed exception (dbEx) for server-side debugging
+                Console.WriteLine($"Database Error Deleting Teacher: {dbEx}"); // Basic logging
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "A database error occurred while attempting to delete the teacher." });
+            }
+            catch (Exception ex) // Catch any other unexpected errors
+            {
+                // Log the detailed exception (ex) for server-side debugging
+                Console.WriteLine($"Generic Error Deleting Teacher: {ex}"); // Basic logging
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
             }
         }
 
@@ -112,11 +134,30 @@ namespace Backend.Controllers
             try
             {
                 await _adminService.DeleteStudentAsync(id);
-                return NoContent();
+                return NoContent(); // 204 Success
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(ex.Message);
+                // Check if it's our specific 'cannot delete' messages or 'not found'
+                if (ex.Message.StartsWith("Cannot delete student"))
+                {
+                    // Return 400 Bad Request with the specific error message
+                    return BadRequest(new { message = ex.Message });
+                }
+                else // Assume "Student not found"
+                {
+                    return NotFound(new { message = ex.Message }); // 404 Not Found
+                }
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx) // Catch unexpected DB issues
+            {
+                Console.WriteLine($"Database Error Deleting Student: {dbEx}");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "A database error occurred." });
+            }
+            catch (Exception ex) // Catch any other errors
+            {
+                Console.WriteLine($"Generic Error Deleting Student: {ex}");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
             }
         }
 

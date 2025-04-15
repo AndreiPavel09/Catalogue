@@ -1,0 +1,244 @@
+﻿<!-- FrontendAdmin/Pages/Admin/ManageTeachers.razor -->
+@page "/admin/teachers"
+@inject IAdminApiService AdminService
+@inject NavigationManager NavigationManager // Optional: Inject NavigationManager if you need to redirect programmatically
+
+@using Frontend.DTOs  @* Add this if your DTOs are in this namespace *@
+@using Frontend.Services @* Add this if your service interface is in this namespace *@
+
+<h3>Manage Teachers</h3>
+
+@if (isLoading)
+{
+    <p><em>Loading teachers...</em></p>
+}
+else if (!string.IsNullOrEmpty(loadErrorMessage)) // Use a specific variable for loading errors
+{
+    <div class="alert alert-danger" role="alert">
+        @loadErrorMessage
+    </div>
+}
+else
+{
+    <h4>Add New Teacher</h4>
+    <EditForm Model="@newTeacher" OnValidSubmit="@HandleAddTeacher" FormName="addTeacherForm">
+        <DataAnnotationsValidator /> @* Enables validation based on DTO attributes *@
+
+        <div class="mb-3">
+            <label for="username" class="form-label">Username:</label>
+            <InputText id="username" @bind-Value="newTeacher.Username" class="form-control" />
+            <ValidationMessage For="@(() => newTeacher.Username)" />
+        </div>
+        <div class="mb-3">
+            <label for="firstname" class="form-label">First Name:</label>
+            <InputText id="firstname" @bind-Value="newTeacher.FirstName" class="form-control" />
+            <ValidationMessage For="@(() => newTeacher.FirstName)" />
+        </div>
+        <div class="mb-3">
+            <label for="lastname" class="form-label">Last Name:</label>
+            <InputText id="lastname" @bind-Value="newTeacher.LastName" class="form-control" />
+            <ValidationMessage For="@(() => newTeacher.LastName)" />
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Password:</label>
+            <InputText type="password" id="password" @bind-Value="newTeacher.Password" class="form-control" />
+            <ValidationMessage For="@(() => newTeacher.Password)" />
+        </div>
+
+        @* Role is set in code, no input needed here unless you want the admin to choose *@
+        @* <InputText type="hidden" @bind-Value="newTeacher.Role" /> *@
+
+
+        <ValidationSummary class="mt-2" /> @* Displays all validation errors *@
+
+        <button type="submit" class="btn btn-primary mt-2" disabled="@isSubmitting">
+            @if (isSubmitting)
+            {
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            }
+            Add Teacher
+        </button>
+        @if (!string.IsNullOrEmpty(addTeacherError))
+        {
+            <div class="alert alert-danger mt-2" role="alert">
+                @addTeacherError
+            </div>
+        }
+    </EditForm>
+
+    <hr class="my-4" />
+
+    <h4>Existing Teachers</h4>
+    @if (teachers == null || !teachers.Any())
+    {
+        <p>No teachers found.</p>
+    }
+    else
+    {
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var teacher in teachers)
+                {
+                    <tr>
+                        <td>@teacher.Id</td>
+                        <td>@teacher.Username</td>
+                        <td>@teacher.FullName</td>
+                        <td>@teacher.Role</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" @onclick="() => HandleDeleteTeacher(teacher.Id)" disabled="@(isDeleting && teacherToDeleteId == teacher.Id)">
+                                @if (isDeleting && teacherToDeleteId == teacher.Id)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                }
+                                else
+                                {
+                                    <span>Delete</span>
+                                } @* Show text when not deleting this specific one *@
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (!string.IsNullOrEmpty(deleteTeacherError))
+        {
+            <div class="alert alert-danger mt-2" role="alert">
+                @deleteTeacherError
+            </div>
+        }
+    }
+}
+
+
+@code {
+    private List<UserDto>? teachers;
+    private CreateUserDto newTeacher = new CreateUserDto { Role = "Teacher" }; // Pre-set role
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private bool isDeleting = false;
+    private int? teacherToDeleteId = null; // Track which delete button was clicked for spinner
+    private string? loadErrorMessage;   // For loading errors
+    private string? addTeacherError;    // Specific error for adding
+    private string? deleteTeacherError; // Specific error for deleting
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTeachers();
+    }
+
+    private async Task LoadTeachers()
+    {
+        isLoading = true;
+        loadErrorMessage = null; // Clear previous errors
+        addTeacherError = null;
+        deleteTeacherError = null;
+        StateHasChanged(); // Update UI to show loading indicator
+
+        try
+        {
+            teachers = await AdminService.GetTeachersAsync();
+            if (teachers == null) // Service returned null, indicating an error during the API call
+            {
+                loadErrorMessage = "Failed to load teachers. API might be unreachable or returned an error. Check browser console (F12) and backend logs.";
+            }
+            // If teachers list is empty, the table display logic will handle the "No teachers found" message.
+        }
+        catch (Exception ex) // Catch unexpected exceptions during the service call itself
+        {
+            loadErrorMessage = $"An error occurred while loading teachers: {ex.Message}";
+            // Log the full exception details for debugging
+            Console.WriteLine($"Error in LoadTeachers: {ex}");
+        }
+        finally // Ensure isLoading is set to false regardless of success or failure
+        {
+            isLoading = false;
+            StateHasChanged(); // Update UI with data or error
+        }
+    }
+
+    private async Task HandleAddTeacher()
+    {
+        isSubmitting = true;
+        addTeacherError = null; // Clear previous add error
+        StateHasChanged();
+
+        try
+        {
+            // Ensure Role is set correctly just before sending
+            newTeacher.Role = "Teacher";
+
+            var createdTeacher = await AdminService.AddTeacherAsync(newTeacher);
+
+            if (createdTeacher != null)
+            {
+                // Successfully added
+                newTeacher = new CreateUserDto { Role = "Teacher" }; // Reset form
+                await LoadTeachers(); // Refresh the list (re-fetches all teachers)
+                // Consider adding only the new teacher to the list locally for better UX if the list is large:
+                // teachers?.Add(createdTeacher);
+                // StateHasChanged();
+            }
+            else
+            {
+                // API call was made but indicated failure (e.g., username exists, validation failed server-side)
+                addTeacherError = "Failed to add teacher. Username might already exist, or an API error occurred. Check console/backend logs.";
+            }
+        }
+        catch (Exception ex)
+        {
+            // An unexpected error occurred during the process
+            addTeacherError = $"An error occurred while adding the teacher: {ex.Message}";
+            Console.WriteLine($"Error in HandleAddTeacher: {ex}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDeleteTeacher(int teacherId)
+    {
+        // Optional: Confirmation dialog
+        isDeleting = true;
+        teacherToDeleteId = teacherId;
+        deleteTeacherError = null;
+        StateHasChanged();
+
+        try
+        {
+            // Call the updated service method
+            var (success, errorMessage) = await AdminService.DeleteTeacherAsync(teacherId);
+
+            if (success)
+            {
+                await LoadTeachers(); // Refresh list
+            }
+            else
+            {
+                // Use the specific error message from the service
+                deleteTeacherError = errorMessage ?? "Failed to delete teacher. An unknown error occurred.";
+            }
+        }
+        catch (Exception ex)
+        {
+            deleteTeacherError = $"An error occurred: {ex.Message}";
+            Console.WriteLine($"Error in HandleDeleteTeacher for ID {teacherId}: {ex}");
+        }
+        finally
+        {
+            isDeleting = false;
+            teacherToDeleteId = null;
+            StateHasChanged();
+        }
+    }
+}
