@@ -22,5 +22,11 @@ namespace Frontend.Services // Ensure namespace is correct
         Task<List<GradeDto>?> GetGradesAsync();
         Task<GradeDto?> AddGradeAsync(CreateGradeDto gradeDto);
         Task<(bool Success, string? ErrorMessage)> DeleteGradeAsync(int gradeId);
+        Task<GradeDto?> GetGradeByIdAsync(int gradeId);
+        Task<(bool Success, string? ErrorMessage)> UpdateGradeAsync(int gradeId, UpdateGradeDto gradeDto);
+
+        Task<List<EnrollmentDto>?> GetEnrollmentsAsync();
+        Task<(bool Success, string? ErrorMessage)> EnrollStudentAsync(EnrollmentDto enrollmentDto);
+        Task<(bool Success, string? ErrorMessage)> UnenrollStudentAsync(int studentId, int courseId);
     }
 }

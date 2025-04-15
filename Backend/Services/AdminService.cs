@@ -32,6 +32,11 @@ namespace Backend.Services
         Task<GradeDto> AddGradeAsync(CreateGradeDto gradeDto);
         Task DeleteGradeAsync(int gradeId);
         Task<List<GradeDto>> ViewGradesAsync();
+        Task UpdateGradeAsync(int gradeId, UpdateGradeDto gradeDto);
+
+        Task EnrollStudentAsync(EnrollmentDto enrollmentDto);
+        Task UnenrollStudentAsync(int studentId, int courseId);
+        Task<List<EnrollmentDetailsDto>> GetEnrollmentsAsync(); // To view existing enrollments
     }
 
     public class AdminService : IAdminService
@@ -333,5 +338,104 @@ namespace Backend.Services
 
             return gradeDtos;
         }
+
+        public async Task UpdateGradeAsync(int gradeId, UpdateGradeDto gradeDto)
+        {
+            // 1. Validate DTO value (optional here, but good practice)
+            if (!gradeDto.Value.HasValue)
+            {
+                throw new ArgumentException("Grade value is required for update.", nameof(gradeDto.Value));
+            }
+
+            // 2. Get the existing grade
+            // Use the repository method that includes related data if needed later,
+            // but for just updating value, FindAsync might suffice if UpdateGradeAsync handles it.
+            // Let's assume GetGradeByIdAsync fetches the entity for update.
+            var grade = await _gradeRepository.GetGradeByIdAsync(gradeId);
+
+            // 3. Validate: Must exist
+            if (grade == null)
+            {
+                throw new InvalidOperationException("Grade not found.");
+            }
+
+            // 4. Update the value if it has changed
+            if (grade.Value != gradeDto.Value.Value) // Compare with the non-nullable value
+            {
+                grade.Value = gradeDto.Value.Value; // Assign the non-nullable value
+                                                    // 5. Call repository update
+                                                    // Ensure GradeRepository.UpdateGradeAsync marks the entity as modified and saves changes.
+                await _gradeRepository.UpdateGradeAsync(grade);
+            }
+            // else: No change needed if value is the same
+        }
+
+        public async Task EnrollStudentAsync(EnrollmentDto enrollmentDto)
+        {
+            // 1. Validate Student exists and is a Student
+            var student = await _userRepository.GetUserByIdAsync(enrollmentDto.StudentId);
+            if (student == null || student.UserRole != UserRole.Student)
+                throw new InvalidOperationException("Student not found or invalid user type.");
+
+            // 2. Validate Course exists
+            var course = await _courseRepository.GetCourseByIdAsync(enrollmentDto.CourseId);
+            if (course == null)
+                throw new InvalidOperationException("Course not found.");
+
+            // 3. Check if already enrolled
+            bool alreadyEnrolled = await _context.StudentCourses
+                .AnyAsync(sc => sc.StudentId == enrollmentDto.StudentId && sc.CourseId == enrollmentDto.CourseId);
+            if (alreadyEnrolled)
+                throw new InvalidOperationException($"Student '{student.FullName}' is already enrolled in course '{course.CourseName}'.");
+
+            // 4. Create and save enrollment
+            var enrollment = new StudentCourse
+            {
+                StudentId = enrollmentDto.StudentId,
+                CourseId = enrollmentDto.CourseId
+            };
+            _context.StudentCourses.Add(enrollment);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UnenrollStudentAsync(int studentId, int courseId)
+        {
+            // 1. Find the enrollment record
+            var enrollment = await _context.StudentCourses
+                .FirstOrDefaultAsync(sc => sc.StudentId == studentId && sc.CourseId == courseId);
+
+            // 2. Validate it exists
+            if (enrollment == null)
+                throw new InvalidOperationException("Enrollment record not found.");
+
+            // 3. Remove and save
+            _context.StudentCourses.Remove(enrollment);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<EnrollmentDetailsDto>> GetEnrollmentsAsync()
+        {
+            // 1. Fetch the raw StudentCourse entities including related data from the DB
+            var studentCoursesFromDb = await _context.StudentCourses
+                .Include(sc => sc.Student) // Eager load Student (User) data
+                .Include(sc => sc.Course)  // Eager load Course data
+                                           // Optional: You could apply simple filtering here if needed (e.g., .Where(sc => sc.Course.IsActive))
+                .ToListAsync(); // Execute the database query
+
+            // 2. Project the results into DTOs in memory using LINQ to Objects
+            var enrollmentDtos = studentCoursesFromDb
+                .Select(sc => new EnrollmentDetailsDto // This Select now operates on the in-memory list
+                {
+                    StudentId = sc.StudentId,
+                    CourseId = sc.CourseId,
+                    StudentName = sc.Student?.FullName ?? "N/A", // Safely access potentially null Student
+                    CourseName = sc.Course?.CourseName ?? "N/A"   // Safely access potentially null Course
+                })
+                .OrderBy(dto => dto.CourseName).ThenBy(dto => dto.StudentName) // Ordering happens in memory
+                .ToList(); // Final list of DTOs
+
+            return enrollmentDtos;
+        }
     }
+
 }

@@ -114,15 +114,18 @@ else
                         <td>@courseName</td>
                         <td>@grade.Value.ToString("0.0")</td> @* Format to one decimal place *@
                         <td>
-                            <button class="btn btn-xs btn-danger" @onclick="() => HandleDeleteGrade(grade.Id)" disabled="@(isDeleting && gradeToDeleteId == grade.Id)">
+                            <button class="btn btn-xs btn-secondary me-1" @onclick="() => EditGrade(grade.Id)" title="Edit">
+                                <span class="oi oi-pencil"></span>
+                            </button>
+                            <button class="btn btn-xs btn-danger" @onclick="() => HandleDeleteGrade(grade.Id)" disabled="@(isDeleting && gradeToDeleteId == grade.Id)" title="Delete">
                                 @if (isDeleting && gradeToDeleteId == grade.Id)
                                 {
                                     <span class="spinner-border spinner-border-sm"></span>
                                 }
                                 else
                                 {
-                                    <span class="oi oi-trash" title="Delete"></span>
-                                } @* Use icon for small buttons *@
+                                    <span class="oi oi-trash"></span>
+                                }
                             </button>
                         </td>
                     </tr>
@@ -151,6 +154,13 @@ else
     private string? loadErrorMessage;
     private string? addGradeError;
     private string? deleteGradeError;
+
+    @inject NavigationManager NavigationManager // Ensure this is injected
+
+    private void EditGrade(int gradeId)
+    {
+        NavigationManager.NavigateTo($"/admin/grades/edit/{gradeId}");
+    }
 
     protected override async Task OnInitializedAsync()
     {

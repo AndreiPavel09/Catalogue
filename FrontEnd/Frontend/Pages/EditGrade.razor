@@ -1,0 +1,148 @@
+﻿<!-- FrontendAdmin/Pages/Admin/EditGrade.razor -->
+@page "/admin/grades/edit/{GradeId:int}"
+@inject IAdminApiService AdminService
+@inject NavigationManager NavigationManager
+
+@using Frontend.DTOs
+@using Frontend.Services
+
+<h3>Edit Grade</h3>
+
+@if (isLoading)
+{
+    <p><em>Loading grade details...</em></p>
+}
+else if (gradeToEdit == null || !string.IsNullOrEmpty(loadErrorMessage))
+{
+    <div class="alert alert-danger">@(loadErrorMessage ?? "Grade not found.")</div>
+    <button class="btn btn-secondary" @onclick="GoBackToList">Back to List</button>
+}
+else
+{
+    @* Bind the form to the GradeDto loaded from the server *@
+    <EditForm Model="@gradeToEdit" OnValidSubmit="HandleUpdateGrade" FormName="editGradeForm">
+        <DataAnnotationsValidator /> @* Validates based on GradeDto attributes *@
+
+        <div class="alert alert-info">
+            Editing Grade for Student: <strong>@gradeToEdit.StudentName</strong> <br />
+            Course: <strong>@gradeToEdit.CourseName</strong> (ID: @GradeId)
+        </div>
+
+        <div class="mb-3">
+            <label for="gradevalue" class="form-label">Grade Value (0-10):</label>
+            @* Bind directly to the Value property of the loaded DTO *@
+            <InputNumber id="gradevalue" @bind-Value="gradeToEdit.Value" step="0.1" class="form-control" />
+            <ValidationMessage For="@(() => gradeToEdit.Value)" />
+        </div>
+
+        <ValidationSummary class="mt-2" />
+
+        @if (!string.IsNullOrEmpty(updateErrorMessage))
+        {
+            <div class="alert alert-danger mt-2" role="alert">@updateErrorMessage</div>
+        }
+
+        <button type="submit" class="btn btn-primary mt-2" disabled="@isSubmitting">
+            @if (isSubmitting)
+            {
+                <span class="spinner-border spinner-border-sm"></span>
+            }
+            Save Changes
+        </button>
+        <button type="button" class="btn btn-secondary mt-2" @onclick="GoBackToList">Cancel</button>
+
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int GradeId { get; set; }
+
+    // Use GradeDto directly for form binding after loading
+    private GradeDto? gradeToEdit;
+
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private string? loadErrorMessage;
+    private string? updateErrorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadGradeData();
+    }
+
+    private async Task LoadGradeData()
+    {
+        isLoading = true;
+        loadErrorMessage = null;
+        updateErrorMessage = null;
+        gradeToEdit = null;
+        StateHasChanged();
+
+        try
+        {
+            gradeToEdit = await AdminService.GetGradeByIdAsync(GradeId);
+            if (gradeToEdit == null)
+            {
+                loadErrorMessage = $"Grade with ID {GradeId} not found.";
+            }
+            // No need to map to a separate UpdateDto here, EditForm binds to gradeToEdit
+        }
+        catch (Exception ex)
+        {
+            loadErrorMessage = $"Error loading grade data: {ex.Message}";
+            Console.WriteLine($"Error loading grade {GradeId}: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleUpdateGrade()
+    {
+        // Only proceed if gradeToEdit is not null (should be handled by UI logic)
+        if (gradeToEdit == null)
+        {
+            updateErrorMessage = "Cannot save, grade data not loaded.";
+            return;
+        }
+
+        isSubmitting = true;
+        updateErrorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            // Create the specific UpdateGradeDto payload needed by the backend PUT endpoint
+            var updatePayload = new UpdateGradeDto { Value = gradeToEdit.Value };
+
+            var (success, errorMessage) = await AdminService.UpdateGradeAsync(GradeId, updatePayload);
+
+            if (success)
+            {
+                GoBackToList(); // Navigate back after successful update
+            }
+            else
+            {
+                updateErrorMessage = errorMessage ?? "Failed to update grade.";
+            }
+        }
+        catch (Exception ex)
+        {
+            updateErrorMessage = $"An unexpected error occurred: {ex.Message}";
+            Console.WriteLine($"Error updating grade {GradeId}: {ex}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBackToList()
+    {
+        NavigationManager.NavigateTo("/admin/grades"); // Navigate back to the list page
+    }
+}

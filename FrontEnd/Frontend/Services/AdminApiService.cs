@@ -506,5 +506,160 @@ namespace Frontend.Services // Ensure namespace is correct
                 return (false, $"An exception occurred: {ex.Message}");
             }
         }
+
+        public async Task<GradeDto?> GetGradeByIdAsync(int gradeId)
+        {
+            // Reuse the existing GetGradesAsync and filter client-side
+            // Inefficient for many grades, but avoids adding another backend endpoint for now
+            // Assumes GetGradesAsync returns the DTO with StudentName/CourseName populated
+            try
+            {
+                var grades = await GetGradesAsync();
+                return grades?.FirstOrDefault(g => g.Id == gradeId);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Exception fetching grade {gradeId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> UpdateGradeAsync(int gradeId, UpdateGradeDto gradeDto)
+        {
+            try
+            {
+                // PUT api/admin/grades/{gradeId}
+                var response = await _httpClient.PutAsJsonAsync($"{ApiBasePath}/grades/{gradeId}", gradeDto);
+
+                if (response.IsSuccessStatusCode) // Expect 204 No Content
+                {
+                    return (true, null);
+                }
+                else
+                {
+                    // Handle errors (Not Found, Bad Request, Conflict, Server Error)
+                    string errorMessage = $"API returned status code {response.StatusCode}.";
+                    if (response.Content != null)
+                    {
+                        try
+                        {
+                            var errorResponse = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                            if (!string.IsNullOrWhiteSpace(errorResponse?.Message))
+                            {
+                                errorMessage = errorResponse.Message;
+                            }
+                            else
+                            {
+                                var plainText = await response.Content.ReadAsStringAsync();
+                                if (!string.IsNullOrWhiteSpace(plainText)) errorMessage = plainText;
+                            }
+                        }
+                        catch { /* Ignore */ }
+                    }
+                    if (response.StatusCode == System.Net.HttpStatusCode.NotFound) errorMessage = "Grade not found.";
+                    else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest) errorMessage += " Invalid grade value provided.";
+
+
+                    Debug.WriteLine($"Error updating grade {gradeId}: {response.StatusCode} - {errorMessage}");
+                    return (false, errorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Exception updating grade {gradeId}: {ex.Message}");
+                return (false, $"An exception occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<List<EnrollmentDto>?> GetEnrollmentsAsync()
+        {
+            try
+            {
+                // GET api/admin/enrollments
+                var response = await _httpClient.GetAsync($"{ApiBasePath}/enrollments");
+                response.EnsureSuccessStatusCode(); // Throw exception for non-2xx codes
+                if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                {
+                    return new List<EnrollmentDto>();
+                }
+                return await response.Content.ReadFromJsonAsync<List<EnrollmentDto>>();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Exception fetching enrollments: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> EnrollStudentAsync(EnrollmentDto enrollmentDto)
+        {
+            try
+            {
+                // POST api/admin/enrollments
+                var response = await _httpClient.PostAsJsonAsync($"{ApiBasePath}/enrollments", enrollmentDto);
+
+                if (response.IsSuccessStatusCode) // Expect 200 OK or 204 No Content maybe
+                {
+                    return (true, null);
+                }
+                else
+                {
+                    string errorMessage = $"API returned status code {response.StatusCode}.";
+                    // Extract message from body (assuming { message: "..."})
+                    if (response.Content != null)
+                    {
+                        try
+                        {
+                            var errorResponse = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                            if (!string.IsNullOrWhiteSpace(errorResponse?.Message)) errorMessage = errorResponse.Message;
+                        }
+                        catch { /* Ignore */ }
+                    }
+                    Debug.WriteLine($"Error enrolling student: {response.StatusCode} - {errorMessage}");
+                    return (false, errorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Exception enrolling student: {ex.Message}");
+                return (false, $"An exception occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> UnenrollStudentAsync(int studentId, int courseId)
+        {
+            try
+            {
+                // DELETE api/admin/enrollments?studentId={studentId}&courseId={courseId}
+                var response = await _httpClient.DeleteAsync($"{ApiBasePath}/enrollments?studentId={studentId}&courseId={courseId}");
+
+                if (response.IsSuccessStatusCode) // Expect 204 No Content
+                {
+                    return (true, null);
+                }
+                else
+                {
+                    string errorMessage = $"API returned status code {response.StatusCode}.";
+                    if (response.Content != null)
+                    {
+                        try
+                        {
+                            var errorResponse = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                            if (!string.IsNullOrWhiteSpace(errorResponse?.Message)) errorMessage = errorResponse.Message;
+                        }
+                        catch { /* Ignore */ }
+                    }
+                    if (response.StatusCode == System.Net.HttpStatusCode.NotFound) errorMessage = "Enrollment not found.";
+
+                    Debug.WriteLine($"Error unenrolling student {studentId} from course {courseId}: {response.StatusCode} - {errorMessage}");
+                    return (false, errorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Exception unenrolling student {studentId}: {ex.Message}");
+                return (false, $"An exception occurred: {ex.Message}");
+            }
+        }
     }
 }

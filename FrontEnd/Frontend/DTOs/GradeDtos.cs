@@ -13,8 +13,8 @@ namespace Frontend.DTOs // Or Frontend.DTOs if that's your project's namespace
         public decimal Value { get; set; }
 
         // Optional: Add Student and Course names for display
-        // public string? StudentName { get; set; }
-        // public string? CourseName { get; set; }
+        public string? StudentName { get; set; }
+        public string? CourseName { get; set; }
     }
 
     public class CreateGradeDto
@@ -32,10 +32,10 @@ namespace Frontend.DTOs // Or Frontend.DTOs if that's your project's namespace
         public decimal Value { get; set; }
     }
 
-    // Optional: UpdateGradeDto (might not be needed for Admin view if adding/deleting is sufficient)
-    // public class UpdateGradeDto
-    // {
-    //     [Range(typeof(decimal), "0", "10")]
-    //     public decimal? Value { get; set; }
-    // }
+    public class UpdateGradeDto
+    {
+        [Required(ErrorMessage = "Grade Value is required.")]
+        [Range(typeof(decimal), "0.0", "10.0", ErrorMessage = "Grade must be between 0 and 10.")]
+        public decimal? Value { get; set; } // Keep nullable to match backend PUT body expectation
+    }
 }

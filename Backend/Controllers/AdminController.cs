@@ -5,6 +5,7 @@ using Backend.DTOs;
 using Backend.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Controllers
 {
@@ -202,6 +203,90 @@ namespace Backend.Controllers
         {
             var grades = await _adminService.ViewGradesAsync();
             return Ok(grades);
+        }
+
+        [HttpPut("grades/{id}")]
+        public async Task<IActionResult> UpdateGrade(int id, [FromBody] UpdateGradeDto gradeDto)
+        {
+            // Use ModelState for basic validation (Range, Required from DTO)
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                // gradeDto now validated by ModelState to have a non-null Value
+                await _adminService.UpdateGradeAsync(id, gradeDto);
+                return NoContent(); // Standard success response for PUT (204)
+            }
+            catch (InvalidOperationException ex) // Catch "Grade not found"
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex) // Catch validation errors from service if any
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Conflict(new { message = "The grade record was modified by another user." });
+            }
+            catch (Exception ex) // Catch unexpected errors
+            {
+                Console.WriteLine($"Error updating grade {id}: {ex}");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An error occurred while updating the grade." });
+            }
+        }
+
+        [HttpGet("enrollments")]
+        public async Task<ActionResult<IEnumerable<EnrollmentDetailsDto>>> GetEnrollments()
+        {
+            var enrollments = await _adminService.GetEnrollmentsAsync();
+            return Ok(enrollments);
+        }
+
+        // POST: api/admin/enrollments
+        [HttpPost("enrollments")]
+        public async Task<IActionResult> EnrollStudent([FromBody] EnrollmentDto enrollmentDto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            try
+            {
+                await _adminService.EnrollStudentAsync(enrollmentDto);
+                // Consider returning CreatedAtAction if you had a GetEnrollmentById endpoint
+                return Ok(new { message = "Student enrolled successfully." }); // Or return NoContent()
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message }); // Student/Course not found, already enrolled
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error enrolling student: {ex}");
+                return StatusCode(500, new { message = "An unexpected error occurred during enrollment." });
+            }
+        }
+
+        // DELETE: api/admin/enrollments?studentId=1&courseId=2
+        [HttpDelete("enrollments")]
+        public async Task<IActionResult> UnenrollStudent([FromQuery] int studentId, [FromQuery] int courseId)
+        {
+            if (studentId <= 0 || courseId <= 0) return BadRequest("Valid studentId and courseId are required.");
+            try
+            {
+                await _adminService.UnenrollStudentAsync(studentId, courseId);
+                return NoContent(); // Success
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { message = ex.Message }); // Enrollment not found
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error unenrolling student: {ex}");
+                return StatusCode(500, new { message = "An unexpected error occurred during unenrollment." });
+            }
         }
     }
 }
