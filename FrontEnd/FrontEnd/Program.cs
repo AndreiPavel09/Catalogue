@@ -1,23 +1,18 @@
-// FrontEnd/Client/Program.cs
-
+using Frontend;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using FrontEnd.Services; // Make sure this namespace is correct for AdminApiClient
-using System.Net.Http;    // Add this using statement
+using Frontend.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// ****** START: Add these lines ******
-// Configure HttpClient to point to your backend API
-// IMPORTANT: Replace with your actual backend URL
 builder.Services.AddScoped(sp => new HttpClient
 {
-    // This is the BASE URL of your ASP.NET Core Backend API project
-    BaseAddress = new Uri("http://localhost:5039") // <--- CHANGE THIS TO YOUR BACKEND URL (use https if applicable)
+    BaseAddress = new Uri("https://localhost:7173")
 });
 
-// Register your API client service for dependency injection in Wasm components
-builder.Services.AddScoped<AdminApiClient>();
-// ****** END: Add these lines ******
-
+// Register the API service
+builder.Services.AddScoped<IAdminApiService, AdminApiService>();
 
 await builder.Build().RunAsync();

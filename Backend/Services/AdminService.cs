@@ -6,6 +6,8 @@ using Backend.Repositories;
 using Backend.DTOs;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Interfaces;
+using Backend.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Services
 {
@@ -36,19 +38,22 @@ namespace Backend.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly ICourseRepository _courseRepository;
-        private readonly IGradeRepository _gradeService;
+        private readonly IGradeRepository _gradeRepository;
         private IUserRepository object1;
         private ICourseRepository object2;
         private IGradeRepository object3;
+        private readonly ApplicationDbContext _context;
 
         public AdminService(
             IUserRepository userRepository,
             ICourseRepository courseRepository,
-            IGradeRepository gradeService)
+            IGradeRepository gradeRepository,
+            ApplicationDbContext context)
         {
-            _userRepository = userRepository;
-            _courseRepository = courseRepository;
-            _gradeService = gradeService;
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _courseRepository = courseRepository ?? throw new ArgumentNullException(nameof(courseRepository));
+            _gradeRepository = gradeRepository ?? throw new ArgumentNullException(nameof(gradeRepository));
+            _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
         // Teacher management
@@ -88,10 +93,29 @@ namespace Backend.Services
 
         public async Task DeleteTeacherAsync(int teacherId)
         {
+            // 1. Find the user and verify they are a teacher
             var teacher = await _userRepository.GetUserByIdAsync(teacherId);
             if (teacher == null || teacher.UserRole != UserRole.Teacher)
-                throw new InvalidOperationException("Teacher not found");
+            {
+                // Use a specific exception or rely on controller to return NotFound
+                throw new InvalidOperationException("Teacher not found."); // Or return false/null if preferred pattern
+            }
 
+            // --- CHECK FOR ASSIGNED COURSES ---
+            // Get all courses (consider optimizing this if you have thousands of courses,
+            // e.g., by adding a specific repository method like HasCourses(teacherId))
+            var courses = await _courseRepository.GetAllCoursesAsync();
+            bool hasCourses = courses.Any(c => c.TeacherId == teacherId);
+
+            if (hasCourses)
+            {
+                // 2. If teacher has courses, throw a specific error message
+                // This message will be shown to the admin user.
+                throw new InvalidOperationException($"Cannot delete teacher '{teacher.FullName}' (ID: {teacherId}) because they are assigned to one or more courses. Please reassign or delete their courses first.");
+            }
+            // --- END CHECK ---
+
+            // 3. If no courses are assigned, proceed with deleting the user
             await _userRepository.DeleteUserAsync(teacherId);
         }
 
@@ -209,10 +233,34 @@ namespace Backend.Services
 
         public async Task DeleteStudentAsync(int studentId)
         {
+            // 1. Find the user and verify they are a student
             var student = await _userRepository.GetUserByIdAsync(studentId);
             if (student == null || student.UserRole != UserRole.Student)
-                throw new InvalidOperationException("Student not found");
+            {
+                throw new InvalidOperationException("Student not found.");
+            }
 
+            // --- CHECK FOR DEPENDENCIES ---
+
+            // Check for existing grades
+            bool hasGrades = await _gradeRepository.HasGradesForStudentAsync(studentId);
+            if (hasGrades)
+            {
+                throw new InvalidOperationException($"Cannot delete student '{student.FullName}' (ID: {studentId}) because they have existing grades. Please delete their grades first.");
+            }
+
+            // Check for existing course enrollments (StudentCourses)
+            bool isEnrolled = await _context.StudentCourses.AnyAsync(sc => sc.StudentId == studentId);
+            if (isEnrolled)
+            {
+                throw new InvalidOperationException($"Cannot delete student '{student.FullName}' (ID: {studentId}) because they are enrolled in one or more courses. Please remove them from courses first.");
+                // Note: You might need a way to *unenroll* students rather than deleting StudentCourse records directly depending on your logic.
+                // For now, we just prevent the student delete.
+            }
+
+            // --- END CHECK ---
+
+            // 3. If no dependencies, proceed with deleting the user
             await _userRepository.DeleteUserAsync(studentId);
         }
 
@@ -249,7 +297,7 @@ namespace Backend.Services
                 Value = gradeDto.Value,
             };
 
-            var createdGrade = await _gradeService.CreateGradeAsync(grade);
+            var createdGrade = await _gradeRepository.CreateGradeAsync(grade);
 
             var resultDto = new GradeDto
             {
@@ -264,12 +312,12 @@ namespace Backend.Services
 
         public async Task DeleteGradeAsync(int gradeId)
         {
-           await _gradeService.DeleteGradeAsync(gradeId);
+           await _gradeRepository.DeleteGradeAsync(gradeId);
         }
 
         public async Task<List<GradeDto>> ViewGradesAsync()
         {
-            var grades = await _gradeService.GetAllGradesAsync();
+            var grades = await _gradeRepository.GetAllGradesAsync();
             var gradeDtos = new List<GradeDto>();
 
             foreach (var grade in grades)

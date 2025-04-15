@@ -12,5 +12,6 @@ namespace Backend.Repositories.Interfaces
             Task<Grade> CreateGradeAsync(Grade grade);
             Task UpdateGradeAsync(Grade grade);
             Task<bool> DeleteGradeAsync(int id);
+            Task<bool> HasGradesForStudentAsync(int studentId);
     }
 }

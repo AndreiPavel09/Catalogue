@@ -41,6 +41,11 @@ namespace Backend.Repositories.Implementations
                 .ToListAsync();
         }
 
+        public async Task<bool> HasGradesForStudentAsync(int studentId)
+        {
+            return await _context.Grades.AnyAsync(g => g.StudentId == studentId);
+        }
+
         public async Task<Grade> CreateGradeAsync(Grade grade)
         {
             await _context.Grades.AddAsync(grade);
