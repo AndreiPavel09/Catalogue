@@ -1,0 +1,229 @@
+﻿<!-- FrontendAdmin/Pages/Admin/ManageEnrollments.razor -->
+@page "/admin/enrollments"
+@inject IAdminApiService AdminService
+@inject NavigationManager NavigationManager // Optional
+
+@using Frontend.DTOs
+@using Frontend.Services
+
+<h3>Manage Student Enrollments</h3>
+
+@if (isLoading)
+{
+     <p><em>Loading...</em></p>
+}
+else if (!string.IsNullOrEmpty(loadErrorMessage))
+{
+     <div class="alert alert-danger">@loadErrorMessage</div>
+}
+else
+{
+    <h4>Enroll Student in Course</h4>
+    @if (students == null || courses == null)
+    {
+         <p><em>Loading students/courses...</em></p>
+    }
+    else
+    {
+        <EditForm Model="@newEnrollment" OnValidSubmit="@HandleEnrollStudent" FormName="enrollForm">
+            <DataAnnotationsValidator />
+            <div class="row g-3 align-items-end">
+                <div class="col-md">
+                    <label for="studentEnroll" class="form-label">Student:</label>
+                    <InputSelect id="studentEnroll" @bind-Value="newEnrollment.StudentId" class="form-select">
+                        <option value="">-- Select Student --</option>
+                        @foreach (var student in students)
+                        {
+                            <option value="@student.Id">@student.FullName (@student.Username)</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => newEnrollment.StudentId)" />
+                </div>
+                <div class="col-md">
+                    <label for="courseEnroll" class="form-label">Course:</label>
+                    <InputSelect id="courseEnroll" @bind-Value="newEnrollment.CourseId" class="form-select">
+                        <option value="">-- Select Course --</option>
+                        @foreach (var course in courses)
+                        {
+                            <option value="@course.Id">@course.CourseName</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => newEnrollment.CourseId)" />
+                </div>
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-success" disabled="@isSubmittingEnroll">
+                        @if (isSubmittingEnroll)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        } Enroll
+                    </button>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(enrollErrorMessage))
+            {
+                <div class="alert alert-danger mt-2">@enrollErrorMessage</div>
+            }
+            <ValidationSummary class="mt-2" />
+        </EditForm>
+    }
+
+    <hr class="my-4" />
+
+    <h4>Current Enrollments</h4>
+    @if (enrollments == null || !enrollments.Any())
+    {
+         <p>No enrollments found.</p>
+    }
+    else
+    {
+        <table class="table table-striped table-hover table-sm">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Course</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var enroll in enrollments)
+                {
+                    <tr>
+                        <td>@enroll.StudentName (ID: @enroll.StudentId)</td>
+                        <td>@enroll.CourseName (ID: @enroll.CourseId)</td>
+                        <td>
+                            <button class="btn btn-xs btn-warning"
+                                    @onclick="() => HandleUnenrollStudent(enroll.StudentId, enroll.CourseId)"
+                                    disabled="@(isSubmittingUnenroll && enrollToUnenroll?.StudentId == enroll.StudentId && enrollToUnenroll?.CourseId == enroll.CourseId)"
+                                    title="Unenroll">
+                                @if (isSubmittingUnenroll && enrollToUnenroll?.StudentId == enroll.StudentId && enrollToUnenroll?.CourseId == enroll.CourseId)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                                else
+                                {
+                                    <span class="oi oi-ban"></span>
+                                } @* Unenroll Icon *@
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (!string.IsNullOrEmpty(unenrollErrorMessage))
+        {
+             <div class="alert alert-danger mt-2">@unenrollErrorMessage</div>
+        }
+    }
+}
+
+@code {
+    private List<EnrollmentDto>? enrollments;
+    private List<UserDto>? students; // For dropdown
+    private List<CourseDto>? courses; // For dropdown
+    private EnrollmentDto newEnrollment = new EnrollmentDto();
+
+    private bool isLoading = true;
+    private bool isSubmittingEnroll = false;
+    private bool isSubmittingUnenroll = false;
+    private EnrollmentDto? enrollToUnenroll = null; // Track which unenroll is happening
+
+    private string? loadErrorMessage;
+    private string? enrollErrorMessage;
+    private string? unenrollErrorMessage;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        loadErrorMessage = null; // Clear errors
+        StateHasChanged();
+
+        var enrollTask = LoadEnrollments();
+        var studentsTask = LoadStudents(); // Need these for the form
+        var coursesTask = LoadCourses();
+
+        await Task.WhenAll(enrollTask, studentsTask, coursesTask);
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    // Separate loading methods
+    private async Task LoadEnrollments()
+    {
+        try
+        {
+            enrollments = await AdminService.GetEnrollmentsAsync();
+            if (enrollments == null) AppendLoadError("Failed to load enrollments.");
+        }
+        catch (Exception ex) { AppendLoadError($"Error loading enrollments: {ex.Message}"); Console.WriteLine(ex); }
+    }
+    private async Task LoadStudents()
+    {
+        try
+        {
+            students = await AdminService.GetStudentsAsync();
+            if (students == null) AppendLoadError("Failed to load students.");
+        }
+        catch (Exception ex) { AppendLoadError($"Error loading students: {ex.Message}"); Console.WriteLine(ex); }
+    }
+    private async Task LoadCourses()
+    {
+        try
+        {
+            courses = await AdminService.GetCoursesAsync();
+            if (courses == null) AppendLoadError("Failed to load courses.");
+        }
+        catch (Exception ex) { AppendLoadError($"Error loading courses: {ex.Message}"); Console.WriteLine(ex); }
+    }
+    private void AppendLoadError(string message)
+    {
+        loadErrorMessage = string.IsNullOrEmpty(loadErrorMessage) ? message : loadErrorMessage + " " + message;
+    }
+
+    private async Task HandleEnrollStudent()
+    {
+        isSubmittingEnroll = true;
+        enrollErrorMessage = null;
+        StateHasChanged();
+        try
+        {
+            var (success, message) = await AdminService.EnrollStudentAsync(newEnrollment);
+            if (success)
+            {
+                newEnrollment = new EnrollmentDto(); // Reset form
+                await LoadEnrollments(); // Refresh table
+                StateHasChanged();
+            }
+            else
+            {
+                enrollErrorMessage = message ?? "Failed to enroll student.";
+            }
+        }
+        catch (Exception ex) { enrollErrorMessage = $"Error: {ex.Message}"; Console.WriteLine(ex); }
+        finally { isSubmittingEnroll = false; StateHasChanged(); }
+    }
+
+    private async Task HandleUnenrollStudent(int studentId, int courseId)
+    {
+        enrollToUnenroll = new EnrollmentDto { StudentId = studentId, CourseId = courseId }; // Track which one
+        isSubmittingUnenroll = true;
+        unenrollErrorMessage = null;
+        StateHasChanged();
+        try
+        {
+            var (success, message) = await AdminService.UnenrollStudentAsync(studentId, courseId);
+            if (success)
+            {
+                await LoadEnrollments(); // Refresh table
+                StateHasChanged();
+            }
+            else
+            {
+                unenrollErrorMessage = message ?? "Failed to unenroll student.";
+            }
+        }
+        catch (Exception ex) { unenrollErrorMessage = $"Error: {ex.Message}"; Console.WriteLine(ex); }
+        finally { isSubmittingUnenroll = false; enrollToUnenroll = null; StateHasChanged(); }
+    }
+}

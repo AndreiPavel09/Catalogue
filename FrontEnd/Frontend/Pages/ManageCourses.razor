@@ -1,0 +1,247 @@
+﻿<!-- FrontendAdmin/Pages/Admin/ManageCourses.razor -->
+@page "/admin/courses"
+@inject IAdminApiService AdminService
+@inject NavigationManager NavigationManager // Optional
+
+@using Frontend.DTOs
+@using Frontend.Services
+
+<h3>Manage Courses</h3>
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p> @* Unified loading message *@
+}
+else if (!string.IsNullOrEmpty(loadErrorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        @loadErrorMessage
+    </div>
+}
+else
+{
+    <h4>Add New Course</h4>
+    <EditForm Model="@newCourse" OnValidSubmit="@HandleAddCourse" FormName="addCourseForm">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label for="coursename" class="form-label">Course Name:</label>
+            <InputText id="coursename" @bind-Value="newCourse.CourseName" class="form-control" />
+            <ValidationMessage For="@(() => newCourse.CourseName)" />
+        </div>
+
+        <div class="mb-3">
+            <label for="teacher" class="form-label">Assign Teacher:</label>
+            @if (teachers == null)
+            {
+                <p><em>Loading teachers...</em></p>
+            }
+            else
+            {
+                <InputSelect id="teacher" @bind-Value="newCourse.TeacherId" class="form-select">
+                    <option value="">-- Select Teacher --</option> @* Default empty option *@
+                    @foreach (var teacher in teachers)
+                    {
+                        <option value="@teacher.Id">@teacher.FullName (@teacher.Username)</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => newCourse.TeacherId)" />
+            }
+        </div>
+
+        <ValidationSummary class="mt-2" />
+
+        <button type="submit" class="btn btn-primary mt-2" disabled="@isSubmitting">
+            @if (isSubmitting)
+            {
+                <span class="spinner-border spinner-border-sm"></span>
+            }
+            Add Course
+        </button>
+        @if (!string.IsNullOrEmpty(addCourseError))
+        {
+            <div class="alert alert-danger mt-2" role="alert">@addCourseError</div>
+        }
+    </EditForm>
+
+    <hr class="my-4" />
+
+    <h4>Existing Courses</h4>
+    @if (courses == null || !courses.Any())
+    {
+        <p>No courses found.</p>
+    }
+    else
+    {
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Course Name</th>
+                    <th>Teacher ID</th>
+                    <th>Teacher Name</th> @* Display teacher name for clarity *@
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var course in courses)
+                {
+                    var teacherName = teachers?.FirstOrDefault(t => t.Id == course.TeacherId)?.FullName ?? "N/A";
+                    <tr>
+                        <td>@course.Id</td>
+                        <td>@course.CourseName</td>
+                        <td>@course.TeacherId</td>
+                        <td>@teacherName</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" @onclick="() => HandleDeleteCourse(course.Id)" disabled="@(isDeleting && courseToDeleteId == course.Id)">
+                                @if (isDeleting && courseToDeleteId == course.Id)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                                else
+                                {
+                                    <span>Delete</span>
+                                }
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (!string.IsNullOrEmpty(deleteCourseError))
+        {
+            <div class="alert alert-danger mt-2" role="alert">@deleteCourseError</div>
+        }
+    }
+}
+
+
+@code {
+    private List<CourseDto>? courses;
+    private List<UserDto>? teachers; // To populate the dropdown
+    private CreateCourseDto newCourse = new CreateCourseDto();
+    private bool isLoading = true; // Combined loading state
+    private bool isSubmitting = false;
+    private bool isDeleting = false;
+    private int? courseToDeleteId = null;
+    private string? loadErrorMessage;
+    private string? addCourseError;
+    private string? deleteCourseError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        loadErrorMessage = null;
+        StateHasChanged(); // Show initial loading
+
+        // Load both courses and teachers in parallel for efficiency
+        var coursesTask = LoadCourses();
+        var teachersTask = LoadTeachersForDropdown(); // Separate method for clarity
+
+        await Task.WhenAll(coursesTask, teachersTask); // Wait for both tasks to complete
+
+        isLoading = false;
+        StateHasChanged(); // Update UI after loading
+    }
+
+    private async Task LoadCourses()
+    {
+        try
+        {
+            courses = await AdminService.GetCoursesAsync();
+            if (courses == null)
+            {
+                loadErrorMessage = (loadErrorMessage ?? "") + " Failed to load courses. Check API.";
+            }
+        }
+        catch (Exception ex)
+        {
+            loadErrorMessage = (loadErrorMessage ?? "") + $" Error loading courses: {ex.Message}";
+            Console.WriteLine($"Error in LoadCourses: {ex}");
+        }
+    }
+
+    private async Task LoadTeachersForDropdown()
+    {
+        try
+        {
+            teachers = await AdminService.GetTeachersAsync(); // Reuse the existing teacher service method
+            if (teachers == null)
+            {
+                loadErrorMessage = (loadErrorMessage ?? "") + " Failed to load teachers for dropdown. Check API.";
+            }
+        }
+        catch (Exception ex)
+        {
+            loadErrorMessage = (loadErrorMessage ?? "") + $" Error loading teachers: {ex.Message}";
+            Console.WriteLine($"Error loading teachers: {ex}");
+        }
+    }
+
+    private async Task HandleAddCourse()
+    {
+        isSubmitting = true;
+        addCourseError = null;
+        StateHasChanged();
+
+        try
+        {
+            var createdCourse = await AdminService.AddCourseAsync(newCourse);
+            if (createdCourse != null)
+            {
+                newCourse = new CreateCourseDto(); // Reset form
+                await LoadCourses(); // Refresh the list
+                StateHasChanged(); // Ensure UI updates after list refresh
+            }
+            else
+            {
+                addCourseError = "Failed to add course. Check API logs or teacher selection.";
+            }
+        }
+        catch (Exception ex)
+        {
+            addCourseError = $"An error occurred: {ex.Message}";
+            Console.WriteLine($"Error in HandleAddCourse: {ex}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDeleteCourse(int courseId)
+    {
+        isDeleting = true;
+        courseToDeleteId = courseId;
+        deleteCourseError = null;
+        StateHasChanged();
+
+        try
+        {
+            var (success, errorMessage) = await AdminService.DeleteCourseAsync(courseId);
+            if (success)
+            {
+                await LoadCourses(); // Refresh list
+                StateHasChanged();
+            }
+            else
+            {
+                deleteCourseError = errorMessage ?? "Failed to delete course. An unknown error occurred.";
+                // Note: Backend DeleteBehavior.Cascade for Grades/StudentCourses means deleting a course might succeed even if it has grades/enrollments.
+                // If you had DeleteBehavior.Restrict on Grades/StudentCourses, you'd get an error message here.
+            }
+        }
+        catch (Exception ex)
+        {
+            deleteCourseError = $"An error occurred: {ex.Message}";
+            Console.WriteLine($"Error in HandleDeleteCourse for ID {courseId}: {ex}");
+        }
+        finally
+        {
+            isDeleting = false;
+            courseToDeleteId = null;
+            StateHasChanged();
+        }
+    }
+}

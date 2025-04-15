@@ -1,36 +1,18 @@
-using FrontEnd.Client.Pages;
-using FrontEnd.Components;
+using Frontend;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Frontend.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddInteractiveWebAssemblyComponents();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+builder.Services.AddScoped(sp => new HttpClient
 {
-    app.UseWebAssemblyDebugging();
-}
-else
-{
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
-}
+    BaseAddress = new Uri("https://localhost:7173")
+});
 
-app.UseHttpsRedirection();
+// Register the API service
+builder.Services.AddScoped<IAdminApiService, AdminApiService>();
 
-
-app.UseAntiforgery();
-
-app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode()
-    .AddInteractiveWebAssemblyRenderMode()
-    .AddAdditionalAssemblies(typeof(FrontEnd.Client._Imports).Assembly);
-
-app.Run();
+await builder.Build().RunAsync();

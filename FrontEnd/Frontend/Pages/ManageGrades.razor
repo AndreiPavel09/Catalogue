@@ -1,0 +1,301 @@
+﻿<!-- FrontendAdmin/Pages/Admin/ManageGrades.razor -->
+@page "/admin/grades"
+@inject IAdminApiService AdminService
+@inject NavigationManager NavigationManager
+
+@using Frontend.DTOs
+@using Frontend.Services
+
+<h3>Manage Grades</h3>
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!string.IsNullOrEmpty(loadErrorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        @loadErrorMessage
+    </div>
+}
+else
+{
+    <h4>Add New Grade</h4>
+    @if (students == null || courses == null)
+    {
+        <p><em>Loading students and courses for selection...</em></p>
+    }
+    else
+    {
+        <EditForm Model="@newGrade" OnValidSubmit="@HandleAddGrade" FormName="addGradeForm">
+            <DataAnnotationsValidator />
+
+            <div class="row g-3 align-items-end">
+                <div class="col-md">
+                    <label for="student" class="form-label">Student:</label>
+                    <InputSelect id="student" @bind-Value="newGrade.StudentId" class="form-select">
+                        <option value="">-- Select Student --</option>
+                        @foreach (var student in students)
+                        {
+                            <option value="@student.Id">@student.FullName (@student.Username)</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => newGrade.StudentId)" />
+                </div>
+
+                <div class="col-md">
+                    <label for="course" class="form-label">Course:</label>
+                    <InputSelect id="course" @bind-Value="newGrade.CourseId" class="form-select">
+                        <option value="">-- Select Course --</option>
+                        @foreach (var course in courses)
+                        {
+                            // Find teacher name for display
+                            var teacherName = teachers?.FirstOrDefault(t => t.Id == course.TeacherId)?.LastName ?? "N/A";
+                            <option value="@course.Id">@course.CourseName (T: @teacherName)</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => newGrade.CourseId)" />
+                </div>
+
+                <div class="col-md-2">
+                    <label for="gradevalue" class="form-label">Grade (0-10):</label>
+                    <InputNumber id="gradevalue" @bind-Value="newGrade.Value" step="0.1" class="form-control" />
+                    <ValidationMessage For="@(() => newGrade.Value)" />
+                </div>
+
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        Add Grade
+                    </button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(addGradeError))
+            {
+                <div class="alert alert-danger mt-2" role="alert">@addGradeError</div>
+            }
+            <ValidationSummary class="mt-2" />
+        </EditForm>
+    }
+
+    <hr class="my-4" />
+
+    <h4>Existing Grades</h4>
+    @if (grades == null || !grades.Any())
+    {
+        <p>No grades found.</p>
+    }
+    else
+    {
+        <table class="table table-striped table-hover table-sm">
+            @* Added table-sm for compactness *@
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Student</th>
+                    <th>Course</th>
+                    <th>Grade Value</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var grade in grades)
+                {
+                    // Find names for display - requires students and courses lists to be loaded
+                    var studentName = students?.FirstOrDefault(s => s.Id == grade.StudentId)?.FullName ?? $"ID: {grade.StudentId}";
+                    var courseName = courses?.FirstOrDefault(c => c.Id == grade.CourseId)?.CourseName ?? $"ID: {grade.CourseId}";
+                    <tr>
+                        <td>@grade.Id</td>
+                        <td>@studentName</td>
+                        <td>@courseName</td>
+                        <td>@grade.Value.ToString("0.0")</td> @* Format to one decimal place *@
+                        <td>
+                            <button class="btn btn-xs btn-secondary me-1" @onclick="() => EditGrade(grade.Id)" title="Edit">
+                                <span class="oi oi-pencil"></span>
+                            </button>
+                            <button class="btn btn-xs btn-danger" @onclick="() => HandleDeleteGrade(grade.Id)" disabled="@(isDeleting && gradeToDeleteId == grade.Id)" title="Delete">
+                                @if (isDeleting && gradeToDeleteId == grade.Id)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                                else
+                                {
+                                    <span class="oi oi-trash"></span>
+                                }
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (!string.IsNullOrEmpty(deleteGradeError))
+        {
+            <div class="alert alert-danger mt-2" role="alert">@deleteGradeError</div>
+        }
+    }
+}
+
+
+@code {
+    private List<GradeDto>? grades;
+    private List<UserDto>? students; // For dropdown and display
+    private List<CourseDto>? courses; // For dropdown and display
+    private List<UserDto>? teachers; // Needed to display teacher in course dropdown
+    private CreateGradeDto newGrade = new CreateGradeDto();
+
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private bool isDeleting = false;
+    private int? gradeToDeleteId = null;
+    private string? loadErrorMessage;
+    private string? addGradeError;
+    private string? deleteGradeError;
+
+    @inject NavigationManager NavigationManager // Ensure this is injected
+
+    private void EditGrade(int gradeId)
+    {
+        NavigationManager.NavigateTo($"/admin/grades/edit/{gradeId}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        loadErrorMessage = null;
+        StateHasChanged();
+
+        // Load all necessary data in parallel
+        var gradesTask = LoadGrades();
+        var studentsTask = LoadStudents();
+        var coursesTask = LoadCourses();
+        var teachersTask = LoadTeachers(); // Reuse teacher loading
+
+        // Wait for all to complete
+        await Task.WhenAll(gradesTask, studentsTask, coursesTask, teachersTask);
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    // Separate loading methods for clarity
+    private async Task LoadGrades()
+    {
+        try
+        {
+            grades = await AdminService.GetGradesAsync();
+            if (grades == null) AppendLoadError("Failed to load grades.");
+        }
+        catch (Exception ex) { AppendLoadError($"Error loading grades: {ex.Message}"); Console.WriteLine(ex); }
+    }
+    private async Task LoadStudents()
+    {
+        try
+        {
+            students = await AdminService.GetStudentsAsync();
+            if (students == null) AppendLoadError("Failed to load students.");
+        }
+        catch (Exception ex) { AppendLoadError($"Error loading students: {ex.Message}"); Console.WriteLine(ex); }
+    }
+    private async Task LoadCourses()
+    {
+        try
+        {
+            courses = await AdminService.GetCoursesAsync(); // Assumes this method exists from previous step
+            if (courses == null) AppendLoadError("Failed to load courses.");
+        }
+        catch (Exception ex) { AppendLoadError($"Error loading courses: {ex.Message}"); Console.WriteLine(ex); }
+    }
+    private async Task LoadTeachers()
+    {
+        try
+        {
+            teachers = await AdminService.GetTeachersAsync(); // Reuse method from teacher management
+            if (teachers == null) AppendLoadError("Failed to load teachers.");
+        }
+        catch (Exception ex) { AppendLoadError($"Error loading teachers: {ex.Message}"); Console.WriteLine(ex); }
+    }
+
+    // Helper to accumulate loading errors
+    private void AppendLoadError(string message)
+    {
+        if (string.IsNullOrEmpty(loadErrorMessage))
+        {
+            loadErrorMessage = message;
+        }
+        else
+        {
+            loadErrorMessage += " " + message;
+        }
+    }
+
+
+    private async Task HandleAddGrade()
+    {
+        isSubmitting = true;
+        addGradeError = null;
+        StateHasChanged();
+
+        try
+        {
+            var createdGrade = await AdminService.AddGradeAsync(newGrade);
+            if (createdGrade != null)
+            {
+                newGrade = new CreateGradeDto(); // Reset form
+                await LoadGrades(); // Refresh the grades list only
+                StateHasChanged();
+            }
+            else
+            {
+                // Attempt to retrieve specific error from service if AddGradeAsync were modified to return it
+                addGradeError = "Failed to add grade. Check selections and grade value. Student might already have a grade for this course.";
+            }
+        }
+        catch (Exception ex)
+        {
+            addGradeError = $"An error occurred: {ex.Message}";
+            Console.WriteLine($"Error in HandleAddGrade: {ex}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDeleteGrade(int gradeId)
+    {
+        isDeleting = true;
+        gradeToDeleteId = gradeId;
+        deleteGradeError = null;
+        StateHasChanged();
+
+        try
+        {
+            var (success, errorMessage) = await AdminService.DeleteGradeAsync(gradeId);
+            if (success)
+            {
+                await LoadGrades(); // Refresh list
+                StateHasChanged();
+            }
+            else
+            {
+                deleteGradeError = errorMessage ?? "Failed to delete grade. An unknown error occurred.";
+            }
+        }
+        catch (Exception ex)
+        {
+            deleteGradeError = $"An error occurred: {ex.Message}";
+            Console.WriteLine($"Error in HandleDeleteGrade for ID {gradeId}: {ex}");
+        }
+        finally
+        {
+            isDeleting = false;
+            gradeToDeleteId = null;
+            StateHasChanged();
+        }
+    }
+}
