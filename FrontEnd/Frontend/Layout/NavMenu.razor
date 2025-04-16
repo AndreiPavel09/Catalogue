@@ -1,144 +1,89 @@
-﻿@using Frontend.Models
-@inject Frontend.Services.AuthService LoginService
+﻿@using Frontend.Services
+@using Microsoft.AspNetCore.Components.Authorization
 
+@inject Frontend.Services.AuthService AuthService
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Frontend</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
+    @* ... *@
 </div>
 
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    @if (!LoginService.CurrentUserRole.HasValue)
-    {
-        @* --- Utilizator NELOGAT: Afișează doar Login --- *@
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="login" Match="NavLinkMatch.All">
-                <span class="oi oi-account-login" aria-hidden="true"></span> Login
-            </NavLink>
-        </div>
-    }
-    else
-    {
-        @* --- Utilizator LOGAT: Afișează Salut și link-uri pe bază de rol --- *@
-        <div class="nav-item px-3">
-            <span class="nav-link text-light">Role: @LoginService.CurrentUserRole</span> @* Afișează rolul pt debug *@
-        </div>
+    <nav class="flex-column">
+        <AuthorizeView>
+            @* <-- Contextul exterior este 'context' implicit *@
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="login" Match="NavLinkMatch.All">
+                        <span class="oi oi-account-login" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+            <Authorized>
+                @* <-- Aici 'context' este valid și se referă la starea generală *@
+                <div class="nav-item px-3">
+                    <span class="nav-link text-light">Hi, @context.User.Identity?.Name!</span>
+                </div>
 
-        @* --- Link-uri Specifice Rolului ADMIN --- *@
-        @if (LoginService.CurrentUserRole == UserRole.Admin)
-        {
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin">
-                    <span class="oi oi-cog" aria-hidden="true"></span> Admin Panel
-                </NavLink>
-            </div>
-            <div class="nav-item px-3 ms-3">
-                <NavLink class="nav-link" href="admin/teachers">
-                    <span class="oi oi-people" aria-hidden="true"></span> Manage Teachers
-                </NavLink>
-            </div>
-            <div class="nav-item px-3 ms-3">
-                <NavLink class="nav-link" href="admin/courses">
-                    <span class="oi oi-book" aria-hidden="true"></span> Manage Courses
-                </NavLink>
-            </div>
-            <div class="nav-item px-3 ms-3">
-                <NavLink class="nav-link" href="admin/grades">
-                    <span class="oi oi-star" aria-hidden="true"></span> Manage Grades
-                </NavLink>
-            </div>
-            <div class="nav-item px-3 ms-3">
-                <NavLink class="nav-link" href="admin/students">
-                    <span class="oi oi-person" aria-hidden="true"></span> Manage Students
-                </NavLink>
-            </div>
-            <div class="nav-item px-3 ms-3">
-                <NavLink class="nav-link" href="admin/enrollments">
-                    <span class="oi oi-link-intact" aria-hidden="true"></span> Enrollments
-                </NavLink>
-            </div>
-        }
+                @* --- REDENUMEȘTE CONTEXTUL PENTRU AUTHORIZEVIEW INTERIOR --- *@
+                <AuthorizeView Roles="Admin" Context="authContext_Admin">
+                    @* <-- Context="authContext_Admin" *@
+                    <Authorized>
+                        @* Acum nu mai e conflict, contextul aici ar fi 'authContext_Admin' (dar nu îl folosim) *@
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="admin">
+                                <span class="oi oi-cog" aria-hidden="true"></span> Admin Panel
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3 ms-3"><NavLink class="nav-link" href="admin/teachers">Teachers</NavLink></div>
+                        <div class="nav-item px-3 ms-3"><NavLink class="nav-link" href="admin/courses">Courses</NavLink></div>
+                        <div class="nav-item px-3 ms-3"><NavLink class="nav-link" href="admin/grades">Grades</NavLink></div>
+                        <div class="nav-item px-3 ms-3"><NavLink class="nav-link" href="admin/students">Students</NavLink></div>
+                        <div class="nav-item px-3 ms-3"><NavLink class="nav-link" href="admin/enrollments">Enrollments</NavLink></div>
+                    </Authorized>
+                </AuthorizeView>
 
-        @* --- Link-uri Specifice Rolului TEACHER --- *@
-        @if (LoginService.CurrentUserRole == UserRole.Teacher)
-        {
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="teacher">
-                    <span class="oi oi-briefcase" aria-hidden="true"></span> Teacher Portal
-                </NavLink>
-            </div>
-            @* Adaugă aici link-uri specifice pt Teacher *@
-        }
+                <AuthorizeView Roles="Teacher" Context="authContext_Teacher">
+                    @* <-- Context="authContext_Teacher" *@
+                    <Authorized>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="teacher">
+                                <span class="oi oi-briefcase" aria-hidden="true"></span> Teacher Portal
+                            </NavLink>
+                        </div>
+                        @* Alte linkuri Teacher *@
+                    </Authorized>
+                </AuthorizeView>
 
-        @* --- Link-uri Specifice Rolului STUDENT --- *@
-        @if (LoginService.CurrentUserRole == UserRole.Student)
-        {
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="student">
-                    <span class="oi oi-person" aria-hidden="true"></span> Student Home
-                </NavLink>
-            </div>
-            @* Adaugă aici link-uri specifice pt Student *@
-        }
+                <AuthorizeView Roles="Student" Context="authContext_Student">
+                    @* <-- Context="authContext_Student" *@
+                    <Authorized>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="student">
+                                <span class="oi oi-person" aria-hidden="true"></span> Student Home
+                            </NavLink>
+                        </div>
+                        @* Alte linkuri Student *@
+                    </Authorized>
+                </AuthorizeView>
 
-        @* --- Link Comun pt Logout --- *@
-        <div class="nav-item px-3">
-            <button class="nav-link btn btn-link" @onclick="HandleLogout">
-                <span class="oi oi-account-logout" aria-hidden="true"></span> Logout
-            </button>
-        </div>
-    }
-            @* <NavLink class="nav-link" href="admin/teachers">
-                @* Matches the @page directive *@
-              @*  <span class="oi oi-people" aria-hidden="true"></span> Manage Teachers
-            </NavLink> *@
+                <div class="nav-item px-3">
+                    <a class="nav-link" href="#" @onclick="HandleLogout" @onclick:preventDefault>
+                        <span class="oi oi-account-logout" aria-hidden="true"></span> Logout
+                    </a>
+                    
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </nav>
 </div>
-    @* <div class="nav-item px-3">
-        <NavLink class="nav-link" href="admin/courses">
-            <span class="oi oi-book" aria-hidden="true"></span> Manage Courses
-        </NavLink>
-    </div>
-    <div class="nav-item px-3">
-        <NavLink class="nav-link" href="admin/grades">
-            <span class="oi oi-star" aria-hidden="true"></span> Manage Grades
-        </NavLink>
-    </div>
-    <div class="nav-item px-3">
-        <NavLink class="nav-link" href="admin/students">
-            <span class="oi oi-person" aria-hidden="true"></span> Manage Students
-        </NavLink>
-    </div>
-    <div class="nav-item px-3">
-        <NavLink class="nav-link" href="admin/enrollments">
-            <span class="oi oi-link-intact" aria-hidden="true"></span> Enrollments
-        </NavLink>
-    </div> *@
 
 @code {
     private bool collapseNavMenu = true;
-
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
+    private void ToggleNavMenu() { collapseNavMenu = !collapseNavMenu; }
+    private async Task HandleLogout()
     {
-        collapseNavMenu = !collapseNavMenu;
-    }
-    protected override void OnInitialized()
-    {
-        LoginService.OnStateChanged += StateHasChanged; 
-    }
-
-    private void HandleLogout()
-    {
-        LoginService.Logout(); 
-    }
-
-    public void Dispose()
-    {
-        LoginService.OnStateChanged -= StateHasChanged; 
+        Console.WriteLine("NavMenu: HandleLogout called."); 
+        await AuthService.Logout(); 
     }
 }

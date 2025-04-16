@@ -1,13 +1,15 @@
 ﻿@page "/login"
 @using System.ComponentModel.DataAnnotations
 @using Frontend.Models
-@using Frontend.Services
-@inject Frontend.Services.AuthService AuthService
+@inject Frontend.Services.AuthService AuthService 
 @inject NavigationManager NavigationManager
+
+<PageTitle>Login</PageTitle>
+<h3>Login</h3>
 
 <div class="card col-md-6 shadow-sm">
     <div class="card-body">
-        <EditForm Model="@loginModel" OnValidSubmit="HandleLoginAsync" FormName="loginForm">
+        <EditForm Model="@loginModel" OnValidSubmit="HandleLoginAsync">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger mb-3" />
 
@@ -21,13 +23,11 @@
                 <InputText id="username" class="form-control" @bind-Value="loginModel.Username" />
                 <ValidationMessage For="@(() => loginModel.Username)" />
             </div>
-
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
                 <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" />
                 <ValidationMessage For="@(() => loginModel.Password)" />
             </div>
-
             <button type="submit" class="btn btn-primary" disabled="@isProcessing">
                 @if (isProcessing)
                 {
@@ -48,40 +48,54 @@
     private string? errorMessage;
     private bool isProcessing = false;
 
-    protected override void OnInitialized()
+    [CascadingParameter] // Obține starea de autentificare curentă
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
     {
-        
-        if (AuthService.CurrentUserRole.HasValue)
+        // Dacă userul este deja autentificat când ajunge aici, redirecționează-l
+        if (authenticationStateTask != null)
         {
-            NavigateToRolePage(AuthService.CurrentUserRole.Value);
+            var authState = await authenticationStateTask;
+            if (authState.User.Identity?.IsAuthenticated ?? false)
+            {
+                // Determină unde să navighezi pe baza rolului DUPĂ ce starea e confirmată
+                NavigateToRolePageBasedOnClaims(authState.User);
+            }
         }
     }
+
     private async Task HandleLoginAsync()
     {
         isProcessing = true;
         errorMessage = null;
-        StateHasChanged();
+        StateHasChanged(); // Arată spinner
 
+        // Apelează serviciul care salvează starea în localStorage și notifică
         errorMessage = await AuthService.Login(loginModel);
 
-         if (string.IsNullOrEmpty(errorMessage) && AuthService.CurrentUserRole.HasValue)
+        if (!string.IsNullOrEmpty(errorMessage))
         {
-            NavigateToRolePage(AuthService.CurrentUserRole.Value);
+            isProcessing = false;
+            StateHasChanged(); // Afișează eroarea, oprește spinner
         }
-        isProcessing = false;
-        StateHasChanged();
-        
+        // else: Login a reușit. AuthService a apelat deja NotifyAuthenticationStateChangedInternal
+        // și a făcut navigarea intern. Lasă componentele părinte (Layout, NavMenu)
+        // să reacționeze la schimbarea stării propagate prin CascadingAuthenticationState.
+        // Nu mai e nevoie de navigare explicită aici dacă AuthService o face.
+        // isProcessing va fi setat la false când pagina se schimbă oricum.
     }
-    private void NavigateToRolePage(UserRole role)
+
+
+    // Metodă duplicată aici pt redirectarea din OnInitialized
+    private void NavigateToRolePageBasedOnClaims(System.Security.Claims.ClaimsPrincipal user)
     {
         string targetUrl;
-        switch (role)
-        {
-            case UserRole.Admin: targetUrl = "/admin"; break;
-            case UserRole.Teacher: targetUrl = "/teacher"; break;
-            case UserRole.Student: targetUrl = "/student"; break;
-            default: targetUrl = "/"; break; // Fallback
-        }
+        if (user.IsInRole("Admin")) targetUrl = "/admin"; // Verifică rolul din Claims
+        else if (user.IsInRole("Teacher")) targetUrl = "/teacher";
+        else if (user.IsInRole("Student")) targetUrl = "/student";
+        else targetUrl = "/"; // Fallback
+
         NavigationManager.NavigateTo(targetUrl);
     }
 }
