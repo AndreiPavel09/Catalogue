@@ -26,7 +26,5 @@ jobs:
       run: dotnet restore FrontEnd/FrontEnd.sln
     - name: Build backend
       run: dotnet build Backend/Backend.sln --no-restore
-    - name: Build frontend
-      run: dotnet build FrontEnd/FrontEnd.sln --no-restore
     - name: Test
       run: dotnet test --no-build --verbosity normal
