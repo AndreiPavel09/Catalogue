@@ -19,8 +19,6 @@ builder.Services.AddScoped(sp => new HttpClient
 
 builder.Services.AddAuthorizationCore();
 
-builder.Services.AddScoped<AuthenticationStateProvider, ApiAuthenticationStateProvider>();
-
 builder.Services.AddScoped<IAdminApiService, AdminApiService>();
 builder.Services.AddScoped<ITeacherApiService, TeacherApiService>();
 

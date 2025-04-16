@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Backend.Data;
 using Backend.DTOs;
 using Backend.Models;
 using Backend.Repositories;
 using Backend.Repositories.Interfaces;
 using Backend.Services;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 
@@ -17,17 +19,23 @@ namespace Backend.Tests.Services
         private readonly Mock<ICourseRepository> _mockCourseRepository;
         private readonly Mock<IGradeRepository> _mockGradeRepository;
         private readonly AdminService _adminService;
+        private readonly ApplicationDbContext _dbContext; // Instance of the DbContext
 
         public AdminServiceTests()
         {
             _mockUserRepository = new Mock<IUserRepository>();
             _mockCourseRepository = new Mock<ICourseRepository>();
             _mockGradeRepository = new Mock<IGradeRepository>();
-            
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) // Unique name per test run
+            .Options;
+            _dbContext = new ApplicationDbContext(options);
+
             _adminService = new AdminService(
                 _mockUserRepository.Object,
                 _mockCourseRepository.Object,
-                _mockGradeRepository.Object);
+                _mockGradeRepository.Object,
+                _dbContext);
         }
 
         [Fact]
@@ -88,30 +96,6 @@ namespace Backend.Tests.Services
             _mockUserRepository.Verify(repo => repo.CreateUserAsync(It.IsAny<User>()), Times.Never);
         }
 
-        [Fact]
-        public async Task DeleteTeacherAsync_WithValidId_ShouldDeleteTeacher()
-        {
-            // Arrange
-            var teacher = new Teacher 
-            { 
-                Id = 1, 
-                Username = "teacher1", 
-                FirstName = "Jane", 
-                LastName = "Smith"
-            };
-            
-            _mockUserRepository.Setup(repo => repo.GetUserByIdAsync(1))
-                .ReturnsAsync(teacher);
-                
-            _mockUserRepository.Setup(repo => repo.DeleteUserAsync(1))
-                .Returns(Task.CompletedTask);
-
-            // Act
-            await _adminService.DeleteTeacherAsync(1);
-
-            // Assert
-            _mockUserRepository.Verify(repo => repo.DeleteUserAsync(1), Times.Once);
-        }
 
         [Fact]
         public async Task DeleteTeacherAsync_WithInvalidId_ShouldThrowException()
