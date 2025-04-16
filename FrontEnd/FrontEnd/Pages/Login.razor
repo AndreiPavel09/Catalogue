@@ -1,0 +1,87 @@
+﻿@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using Frontend.Models
+@using Frontend.Services
+@inject Frontend.Services.AuthService AuthService
+@inject NavigationManager NavigationManager
+
+<div class="card col-md-6 shadow-sm">
+    <div class="card-body">
+        <EditForm Model="@loginModel" OnValidSubmit="HandleLoginAsync" FormName="loginForm">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger mb-3" />
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger" role="alert">@errorMessage</div>
+            }
+
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <InputText id="username" class="form-control" @bind-Value="loginModel.Username" />
+                <ValidationMessage For="@(() => loginModel.Username)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" />
+                <ValidationMessage For="@(() => loginModel.Password)" />
+            </div>
+
+            <button type="submit" class="btn btn-primary" disabled="@isProcessing">
+                @if (isProcessing)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span> Logging in...</span>
+                }
+                else
+                {
+                    <span>Login</span>
+                }
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private LoginRequest loginModel = new();
+    private string? errorMessage;
+    private bool isProcessing = false;
+
+    protected override void OnInitialized()
+    {
+        
+        if (AuthService.CurrentUserRole.HasValue)
+        {
+            NavigateToRolePage(AuthService.CurrentUserRole.Value);
+        }
+    }
+    private async Task HandleLoginAsync()
+    {
+        isProcessing = true;
+        errorMessage = null;
+        StateHasChanged();
+
+        errorMessage = await AuthService.Login(loginModel);
+
+         if (string.IsNullOrEmpty(errorMessage) && AuthService.CurrentUserRole.HasValue)
+        {
+            NavigateToRolePage(AuthService.CurrentUserRole.Value);
+        }
+        isProcessing = false;
+        StateHasChanged();
+        
+    }
+    private void NavigateToRolePage(UserRole role)
+    {
+        string targetUrl;
+        switch (role)
+        {
+            case UserRole.Admin: targetUrl = "/admin"; break;
+            case UserRole.Teacher: targetUrl = "/teacher"; break;
+            case UserRole.Student: targetUrl = "/student"; break;
+            default: targetUrl = "/"; break; // Fallback
+        }
+        NavigationManager.NavigateTo(targetUrl);
+    }
+}
