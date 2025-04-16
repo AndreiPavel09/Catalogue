@@ -1,26 +1,21 @@
-﻿// Backend/Controllers/AuthController.cs
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Backend.DTOs;
-using Backend.Data;   // Pt ApplicationDbContext
-using Backend.Models; // Pt User
+using Backend.Data;
+using Backend.Models;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization; // Doar pt [AllowAnonymous]
+using Microsoft.EntityFrameworkCore;
 using System; // Pt Guid
-using Microsoft.EntityFrameworkCore; // Pt FirstOrDefaultAsync și Set<T>()
-// using Backend.Services; // <-- Eliminăm complet IUserService din controller
-
-// Adaugă using pentru librăria de hashing (ex: BCrypt.Net-Next)
-// using BCrypt.Net;
 
 namespace Backend.Controllers
 {
     [ApiController]
-    [Route("api/auth")]
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly ApplicationDbContext _context; 
+        private readonly ApplicationDbContext _context;
 
-        public AuthController(ApplicationDbContext context) 
+        public AuthController(ApplicationDbContext context)
         {
             _context = context;
         }
@@ -31,49 +26,48 @@ namespace Backend.Controllers
         {
             if (loginDto == null || string.IsNullOrWhiteSpace(loginDto.Username) || string.IsNullOrWhiteSpace(loginDto.Password))
             {
-                return BadRequest(new { Message = "Username and Password are required." });
+                return BadRequest(new LoginResponseDto { IsSuccess = false, ErrorMessage = "Username and Password are required." });
             }
 
             var user = await _context.Set<User>()
                                      .FirstOrDefaultAsync(u => u.Username.ToLower() == loginDto.Username.ToLower());
 
-            if (user == null)
+            // !!! COMPARAȚIE NESIGURĂ ÎN TEXT SIMPLU !!!
+            if (user == null || user.Password != loginDto.Password) // Compară parolele direct (NESIGUR!)
             {
-                return Ok(new { IsSuccess = false, ErrorMessage = "Invalid credentials." });
-
+                // Returnează Unauthorized, dar cu un corp specific pt frontend
+                return Unauthorized(new LoginResponseDto { IsSuccess = false, ErrorMessage = "Invalid credentials." });
             }
+            // !!! ------------------------------------ !!!
 
-            bool isPasswordValid = VerifyPasswordHash(loginDto.Password, user.Password); // Apel metodă locală/helper
 
-            if (!isPasswordValid)
-            {
-                return Ok(new { IsSuccess = false, ErrorMessage = "Invalid credentials." });
+            // Generează un "token" fals doar ca să existe ceva
+            var fakeToken = Guid.NewGuid().ToString("N");
 
-            }
-
-            var response = new
+            var response = new LoginResponseDto
             {
                 IsSuccess = true,
-                Role = user.UserRole,
-                ErrorMessage = (string?)null
+                Token = fakeToken, // Trimite token-ul fals
+                UserId = user.Id,
+                Username = user.Username,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Role = user.UserRole // Trimite rolul
             };
 
-            return Ok(response);
+            return Ok(response); // Returnează 200 OK cu datele
         }
 
+
+        // Poți elimina sau lăsa acest endpoint, nu are funcționalitate reală acum
         [HttpPost("logout")]
         [AllowAnonymous]
         public IActionResult Logout()
         {
-            Console.WriteLine($"Logout requested by client (Token in header: {Request.Headers["X-Auth-Token"].FirstOrDefault()})");
-            return Ok(new { Message = "Logout requested by client." });
+            Console.WriteLine("Logout endpoint called (no action taken).");
+            return Ok(new { Message = "Logout called." });
         }
 
-        private bool VerifyPasswordHash(string providedPassword, string storedPasswordHash)
-        {
-           
-            Console.WriteLine($"WARNING: Using INSECURE plaintext password comparison in AuthController!");
-            return providedPassword == storedPasswordHash;
-        }
+        // Eliminăm metoda de verificare hash
     }
 }
