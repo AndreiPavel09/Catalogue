@@ -1,5 +1,7 @@
 ﻿@using Frontend.Models
+@using Frontend.Services
 @inject Frontend.Services.AuthService LoginService
+@inject AuthService AuthService
 
 
 <div class="top-row ps-3 navbar navbar-dark">
@@ -72,6 +74,9 @@
                 </NavLink>
             </div>
             @* Adaugă aici link-uri specifice pt Teacher *@
+            <div class="nav-item px-3">
+        <NavLink class="nav-link" href="teacher/my-courses"> My Courses & Grades </NavLink>
+            </div>
         }
 
         @* --- Link-uri Specifice Rolului STUDENT --- *@
@@ -116,6 +121,7 @@
         <NavLink class="nav-link" href="admin/enrollments">
             <span class="oi oi-link-intact" aria-hidden="true"></span> Enrollments
         </NavLink>
+<<<<<<< Updated upstream
     </div> *@
 
 @code {

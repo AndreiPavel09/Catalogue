@@ -6,7 +6,8 @@ using Backend.Models; // Pt User
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization; // Doar pt [AllowAnonymous]
 using System; // Pt Guid
-using Microsoft.EntityFrameworkCore; // Pt FirstOrDefaultAsync și Set<T>()
+using Microsoft.EntityFrameworkCore;
+using Backend.Services.Implementations; // Pt FirstOrDefaultAsync și Set<T>()
 // using Backend.Services; // <-- Eliminăm complet IUserService din controller
 
 // Adaugă using pentru librăria de hashing (ex: BCrypt.Net-Next)
@@ -18,11 +19,13 @@ namespace Backend.Controllers
     [Route("api/auth")]
     public class AuthController : ControllerBase
     {
-        private readonly ApplicationDbContext _context; 
+        private readonly ApplicationDbContext _context;
+        private readonly CurrentUserService _currentUserService;
 
-        public AuthController(ApplicationDbContext context) 
+        public AuthController(ApplicationDbContext context,CurrentUserService currentUserService) 
         {
             _context = context;
+            _currentUserService = currentUserService;
         }
 
         [HttpPost("login")]
@@ -51,6 +54,7 @@ namespace Backend.Controllers
 
             }
 
+            _currentUserService.CurrentUser = user;
             var response = new
             {
                 IsSuccess = true,
@@ -65,6 +69,7 @@ namespace Backend.Controllers
         [AllowAnonymous]
         public IActionResult Logout()
         {
+            _currentUserService.CurrentUser = null;
             Console.WriteLine($"Logout requested by client (Token in header: {Request.Headers["X-Auth-Token"].FirstOrDefault()})");
             return Ok(new { Message = "Logout requested by client." });
         }
