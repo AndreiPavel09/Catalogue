@@ -1,5 +1,4 @@
-﻿<!-- FrontendAdmin/Pages/Admin/EditGrade.razor -->
-@page "/admin/grades/edit/{GradeId:int}"
+﻿@page "/admin/grades/edit/{GradeId:int}"
 @inject IAdminApiService AdminService
 @inject NavigationManager NavigationManager
 
@@ -19,9 +18,8 @@ else if (gradeToEdit == null || !string.IsNullOrEmpty(loadErrorMessage))
 }
 else
 {
-    @* Bind the form to the GradeDto loaded from the server *@
     <EditForm Model="@gradeToEdit" OnValidSubmit="HandleUpdateGrade" FormName="editGradeForm">
-        <DataAnnotationsValidator /> @* Validates based on GradeDto attributes *@
+        <DataAnnotationsValidator />
 
         <div class="alert alert-info">
             Editing Grade for Student: <strong>@gradeToEdit.StudentName</strong> <br />
@@ -30,7 +28,6 @@ else
 
         <div class="mb-3">
             <label for="gradevalue" class="form-label">Grade Value (0-10):</label>
-            @* Bind directly to the Value property of the loaded DTO *@
             <InputNumber id="gradevalue" @bind-Value="gradeToEdit.Value" step="0.1" class="form-control" />
             <ValidationMessage For="@(() => gradeToEdit.Value)" />
         </div>
@@ -58,7 +55,6 @@ else
     [Parameter]
     public int GradeId { get; set; }
 
-    // Use GradeDto directly for form binding after loading
     private GradeDto? gradeToEdit;
 
     private bool isLoading = true;
@@ -86,7 +82,6 @@ else
             {
                 loadErrorMessage = $"Grade with ID {GradeId} not found.";
             }
-            // No need to map to a separate UpdateDto here, EditForm binds to gradeToEdit
         }
         catch (Exception ex)
         {
@@ -102,7 +97,6 @@ else
 
     private async Task HandleUpdateGrade()
     {
-        // Only proceed if gradeToEdit is not null (should be handled by UI logic)
         if (gradeToEdit == null)
         {
             updateErrorMessage = "Cannot save, grade data not loaded.";
@@ -115,14 +109,13 @@ else
 
         try
         {
-            // Create the specific UpdateGradeDto payload needed by the backend PUT endpoint
             var updatePayload = new UpdateGradeDto { Value = gradeToEdit.Value };
 
             var (success, errorMessage) = await AdminService.UpdateGradeAsync(GradeId, updatePayload);
 
             if (success)
             {
-                GoBackToList(); // Navigate back after successful update
+                GoBackToList(); 
             }
             else
             {
@@ -143,6 +136,6 @@ else
 
     private void GoBackToList()
     {
-        NavigationManager.NavigateTo("/admin/grades"); // Navigate back to the list page
+        NavigationManager.NavigateTo("/admin/grades"); 
     }
 }

@@ -1,4 +1,5 @@
-﻿using Backend.Models;
+﻿using Backend.DTOs;
+using Backend.Models;
 
 namespace Backend.Repositories.Interfaces
 {
@@ -13,5 +14,9 @@ namespace Backend.Repositories.Interfaces
             Task UpdateGradeAsync(Grade grade);
             Task<bool> DeleteGradeAsync(int id);
             Task<bool> HasGradesForStudentAsync(int studentId);
+        Task<IEnumerable<CourseGradeDto>> GetCourseGradesForStudentAsync(int studentId);
+        Task<IEnumerable<decimal>> GetGradeValuesForStudentAsync(int studentId);
+
+
     }
 }

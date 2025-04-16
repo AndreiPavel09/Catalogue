@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api")]
     [ApiController]
     public class GradeController:ControllerBase
     {
@@ -86,6 +86,20 @@ namespace Backend.Controllers
                 return NotFound();
             }
             return NoContent();
+        }
+
+        [HttpGet("students/{studentId}/coursegrades")]
+        public async Task<ActionResult<IEnumerable<CourseGradeDto>>> GetStudentCourseGrades(int studentId)
+        {
+            var grades = await _gradeService.GetCourseGradesForStudentAsync(studentId);
+            return Ok(grades);
+        }
+        [HttpGet("students/{studentId}/averagegrade")]
+        public async Task<ActionResult<object>> GetStudentAverageGrade(int studentId)
+        {
+            var average = await _gradeService.CalculateAverageGradeForStudentAsync(studentId);
+
+            return Ok(new { average = average });
         }
 
     }

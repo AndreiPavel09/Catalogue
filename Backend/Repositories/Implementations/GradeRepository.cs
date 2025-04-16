@@ -1,4 +1,5 @@
 ﻿using Backend.Data;
+using Backend.DTOs;
 using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -70,6 +71,32 @@ namespace Backend.Repositories.Implementations
                 return true;
             }
             return false;
+        }
+
+        public async Task<IEnumerable<CourseGradeDto>> GetCourseGradesForStudentAsync(int studentId)
+        {
+            var gradesData = await _context.Grades 
+                                  .Where(g => g.StudentId == studentId)
+                                  .Include(g => g.Course)
+                                  .Select(g => new CourseGradeDto 
+                                  {
+                                      CourseId = g.CourseId,
+                                      CourseName = g.Course != null ? g.Course.CourseName : "N/A",
+                                      GradeId = g.Id,
+                                      GradeValue = g.Value,
+                                  })
+                                  .ToListAsync(); // Execută query-ul
+
+            return gradesData ?? new List<CourseGradeDto>(); // Returnează lista (poate fi goală)
+        }
+        public async Task<IEnumerable<decimal>> GetGradeValuesForStudentAsync(int studentId)
+        {
+            // Selectează direct doar coloana cu valoarea notei
+            var gradeValues = await _context.Grades
+                                    .Where(g => g.StudentId == studentId)
+                                    .Select(g => g.Value) // Selectează doar proprietatea Value (nota)
+                                    .ToListAsync();
+            return gradeValues;
         }
     }
 }

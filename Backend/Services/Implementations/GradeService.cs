@@ -1,6 +1,8 @@
-﻿using Backend.Models;
+﻿using Backend.DTOs;
+using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Services.Implementations
 {
@@ -40,7 +42,30 @@ namespace Backend.Services.Implementations
                 return await _gradeRepository.DeleteGradeAsync(id);
                     
             }
+        public async Task<IEnumerable<CourseGradeDto>> GetCourseGradesForStudentAsync(int studentId)
+        {
+            return await _gradeRepository.GetCourseGradesForStudentAsync(studentId);
         }
+        public async Task<decimal?> CalculateAverageGradeForStudentAsync(int studentId)
+        {
+            var gradeValues = await _gradeRepository.GetGradeValuesForStudentAsync(studentId);
+
+            if (gradeValues == null || !gradeValues.Any())
+            {
+                return null; 
+            }
+
+            try 
+            {
+                decimal average = gradeValues.Average();
+                return Math.Round(average, 2); 
+            }
+            catch (InvalidOperationException) 
+            {
+                return null;
+            }
+        }
+    }
 
 
     }
