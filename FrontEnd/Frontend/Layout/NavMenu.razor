@@ -4,13 +4,12 @@
 @inject AuthService AuthService
 @using Microsoft.AspNetCore.Components.Authorization
 
-@inject Frontend.Services.AuthService AuthService
-
 <div class="top-row ps-3 navbar navbar-dark">
     @* ... *@
 </div>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+@* <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu"> *@
+<div class="nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="flex-column">
         <AuthorizeView>
             @* <-- Contextul exterior este 'context' implicit *@
