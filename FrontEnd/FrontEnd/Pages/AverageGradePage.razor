@@ -1,0 +1,57 @@
+﻿@page "/student/averagegrade" 
+@attribute [Authorize(Roles = "Student")] // Protejează pagina
+@inject Frontend.Services.StudentService StudentDataService
+@using Frontend.Models 
+@using Microsoft.AspNetCore.Authorization
+
+<PageTitle>My Average Grade</PageTitle>
+
+<h3>My Average Grade</h3>
+
+@if (isLoading)
+{
+    <p><em>Calculating average grade...</em></p>
+}
+else if (averageGrade.HasValue)
+{
+    <div class="alert alert-info fs-4" role="alert">
+        Your current overall average grade is: <strong>@averageGrade.Value.ToString("N2")</strong> 
+    </div>
+}
+else
+{
+    <p><em>Could not determine average grade. You may not have any grades recorded yet.</em></p>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+         <p class="text-danger">@errorMessage</p>
+    } 
+}
+
+@code {
+    private decimal? averageGrade;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            averageGrade = await StudentDataService.GetMyAverageGradeAsync();
+            if (!averageGrade.HasValue)
+            {
+                Console.WriteLine("AverageGradePage: Service returned null for average grade.");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred while loading the average grade: {ex.Message}";
+            Console.WriteLine($"Error loading average grade in component: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

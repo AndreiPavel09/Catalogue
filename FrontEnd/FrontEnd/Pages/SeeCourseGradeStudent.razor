@@ -1,0 +1,70 @@
+﻿@page "/student/coursegrade"
+@attribute [Authorize(Roles = "Student")] 
+@inject Frontend.Services.StudentService StudentDataService
+@using Frontend.Models
+@using Microsoft.AspNetCore.Authorization
+
+<PageTitle>My Grades</PageTitle>
+
+<h3>My Course Grades</h3>
+
+@if (isLoading)
+{
+    <p><em>Loading grades...</em></p>
+}
+else if (courseGrades == null || !courseGrades.Any())
+{
+    <p><em>No grades found.</em></p>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p class="text-danger">@errorMessage</p>
+    }
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Course</th>
+                <th>Grade</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var gradeInfo in courseGrades.OrderBy(g => g.CourseName))
+            {
+                <tr>
+                    <td>@gradeInfo.CourseName</td>
+                    <td>@gradeInfo.GradeValue</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<CourseGradeDto>? courseGrades;
+    private bool isLoading = false;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        try
+        {
+            courseGrades = await StudentDataService.GetMyCourseGradesAsync();
+            if (courseGrades == null)
+            {
+                errorMessage = "Could not load grade data.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+            Console.WriteLine($"Error loading grades in component: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

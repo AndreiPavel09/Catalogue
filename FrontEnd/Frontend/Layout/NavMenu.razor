@@ -55,14 +55,22 @@
                 </AuthorizeView>
 
                 <AuthorizeView Roles="Student" Context="authContext_Student">
-                    @* <-- Context="authContext_Student" *@
                     <Authorized>
                         <div class="nav-item px-3">
                             <NavLink class="nav-link" href="student">
                                 <span class="oi oi-person" aria-hidden="true"></span> Student Home
                             </NavLink>
                         </div>
-                        @* Alte linkuri Student *@
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="student/coursegrade">
+                                <span class="oi oi-person" aria-hidden="true"></span> My Grades
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="student/averagegrade">
+                                <span class="oi oi-calculator" aria-hidden="true"></span> Average Grade
+                            </NavLink>
+                        </div>
                     </Authorized>
                 </AuthorizeView>
 

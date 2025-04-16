@@ -48,18 +48,16 @@
     private string? errorMessage;
     private bool isProcessing = false;
 
-    [CascadingParameter] // Obține starea de autentificare curentă
+    [CascadingParameter] 
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        // Dacă userul este deja autentificat când ajunge aici, redirecționează-l
         if (authenticationStateTask != null)
         {
             var authState = await authenticationStateTask;
             if (authState.User.Identity?.IsAuthenticated ?? false)
             {
-                // Determină unde să navighezi pe baza rolului DUPĂ ce starea e confirmată
                 NavigateToRolePageBasedOnClaims(authState.User);
             }
         }
@@ -69,32 +67,26 @@
     {
         isProcessing = true;
         errorMessage = null;
-        StateHasChanged(); // Arată spinner
+        StateHasChanged(); 
 
-        // Apelează serviciul care salvează starea în localStorage și notifică
         errorMessage = await AuthService.Login(loginModel);
 
         if (!string.IsNullOrEmpty(errorMessage))
         {
             isProcessing = false;
-            StateHasChanged(); // Afișează eroarea, oprește spinner
+            StateHasChanged(); 
         }
-        // else: Login a reușit. AuthService a apelat deja NotifyAuthenticationStateChangedInternal
-        // și a făcut navigarea intern. Lasă componentele părinte (Layout, NavMenu)
-        // să reacționeze la schimbarea stării propagate prin CascadingAuthenticationState.
-        // Nu mai e nevoie de navigare explicită aici dacă AuthService o face.
-        // isProcessing va fi setat la false când pagina se schimbă oricum.
+       
     }
 
 
-    // Metodă duplicată aici pt redirectarea din OnInitialized
     private void NavigateToRolePageBasedOnClaims(System.Security.Claims.ClaimsPrincipal user)
     {
         string targetUrl;
-        if (user.IsInRole("Admin")) targetUrl = "/admin"; // Verifică rolul din Claims
+        if (user.IsInRole("Admin")) targetUrl = "/admin";
         else if (user.IsInRole("Teacher")) targetUrl = "/teacher";
         else if (user.IsInRole("Student")) targetUrl = "/student";
-        else targetUrl = "/"; // Fallback
+        else targetUrl = "/"; 
 
         NavigationManager.NavigateTo(targetUrl);
     }
