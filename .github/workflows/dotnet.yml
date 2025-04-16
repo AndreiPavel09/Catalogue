@@ -5,9 +5,9 @@ name: .NET
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "Making-it-work" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "Making-it-work" ]
 
 jobs:
   build:
@@ -19,10 +19,14 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.0.x
-    - name: Restore dependencies
-      run: dotnet restore Backend/Backend.sln
-    - name: Build
-      run: dotnet build Backend/Backend.sln --no-restore
+        dotnet-version: 8.0.x
+    - name: Restore dependencies backend
+      run: dotnet restore Backend.sln
+    - name: Restore dependencies backend
+      run: dotnet restore FrontEnd.sln
+    - name: Build backend
+      run: dotnet build Backend.sln --no-restore
+    - name: Build backend
+      run: dotnet build FrontEnd.sln --no-restore
     - name: Test
       run: dotnet test --no-build --verbosity normal
