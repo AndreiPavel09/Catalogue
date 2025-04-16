@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Backend", "Backend.csproj",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Backend.Tests", "..\Backend.Tests\Backend.Tests.csproj", "{F7CEDA83-60D1-46E5-998D-485C24A051EC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Frontend", "..\FrontEnd\Frontend\Frontend.csproj", "{279DEC50-7783-4FC4-B8AE-FB197C5325AA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrontEnd", "..\FrontEnd\Frontend\FrontEnd.csproj", "{279DEC50-7783-4FC4-B8AE-FB197C5325AA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
