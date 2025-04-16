@@ -5,7 +5,7 @@ name: .NET
 
 on:
   push:
-    branches: [ "Making-it-work" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "Making-it-work" ]
 
