@@ -6,6 +6,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization; // Doar pt [AllowAnonymous]
 using Microsoft.EntityFrameworkCore;
 using System; // Pt Guid
+using Microsoft.EntityFrameworkCore;
+using Backend.Services.Implementations; // Pt FirstOrDefaultAsync și Set<T>()
+// using Backend.Services; // <-- Eliminăm complet IUserService din controller
+
+// Adaugă using pentru librăria de hashing (ex: BCrypt.Net-Next)
+// using BCrypt.Net;
 
 namespace Backend.Controllers
 {
@@ -14,10 +20,12 @@ namespace Backend.Controllers
     public class AuthController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly CurrentUserService _currentUserService;
 
-        public AuthController(ApplicationDbContext context)
+        public AuthController(ApplicationDbContext context,CurrentUserService currentUserService) 
         {
             _context = context;
+            _currentUserService = currentUserService;
         }
 
         [HttpPost("login")]
@@ -44,6 +52,7 @@ namespace Backend.Controllers
             // Generează un "token" fals doar ca să existe ceva
             var fakeToken = Guid.NewGuid().ToString("N");
 
+            _currentUserService.CurrentUser = user;
             var response = new LoginResponseDto
             {
                 IsSuccess = true,
@@ -64,6 +73,7 @@ namespace Backend.Controllers
         [AllowAnonymous]
         public IActionResult Logout()
         {
+            _currentUserService.CurrentUser = null;
             Console.WriteLine("Logout endpoint called (no action taken).");
             return Ok(new { Message = "Logout called." });
         }

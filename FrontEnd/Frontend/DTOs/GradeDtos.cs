@@ -38,4 +38,25 @@ namespace Frontend.DTOs // Or Frontend.DTOs if that's your project's namespace
         [Range(typeof(decimal), "0.0", "10.0", ErrorMessage = "Grade must be between 0 and 10.")]
         public decimal? Value { get; set; } // Keep nullable to match backend PUT body expectation
     }
+
+    public class StudentGradeEntryDto
+    {
+        [Required]
+        [Range(1, int.MaxValue)]
+        public int StudentId { get; set; }
+
+        [Required(ErrorMessage = "Grade Value is required.")]
+        [Range(typeof(decimal), "0.0", "10.0", ErrorMessage = "Grade must be between 0 and 10.")]
+        public decimal Value { get; set; }
+        // Add optional fields like AssignmentName, Date if needed later
+    }
+
+    // Optional: DTO for the response (e.g., list of created grades or summary)
+    public class BulkCreateGradesResponseDto
+    {
+        public int CourseId { get; set; }
+        public int GradesSuccessfullyAdded { get; set; }
+        public List<string> Errors { get; set; } = new List<string>();
+        // public List<GradeDto> AddedGrades { get; set; } // Optionally return created grades
+    }
 }

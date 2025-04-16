@@ -34,6 +34,7 @@ namespace Backend
             services.AddScoped<ICourseService, CourseService>();
             services.AddScoped<ITeacherService, TeacherService>();
             services.AddScoped<IStudentService, StudentService>();
+            services.AddSingleton<CurrentUserService>();
 
             return services;
         }

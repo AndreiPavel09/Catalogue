@@ -1,0 +1,79 @@
+﻿<!-- FrontendAdmin/Pages/Teacher/MyCourses.razor -->
+@page "/teacher/my-courses"
+
+@inject ITeacherApiService TeacherService
+@inject NavigationManager NavigationManager
+
+@using Frontend.Services
+@using Frontend.DTOs // Adjust if needed
+@using Microsoft.AspNetCore.Authorization
+
+<h3>My Courses</h3>
+
+@if (isLoading)
+{
+    <p><em>Loading courses...</em></p>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (courses == null || !courses.Any())
+{
+    <p>You are not currently assigned to any courses.</p>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var course in courses)
+        {
+            <a href="/teacher/course/@course.Id" class="list-group-item list-group-item-action">
+                @course.CourseName (ID: @course.Id)
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private List<CourseDto>? courses;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? currentUserName;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        if (AuthenticationStateTask != null)
+        {
+            var authState = await AuthenticationStateTask;
+            var user = authState.User;
+            if (user.Identity != null && user.Identity.IsAuthenticated)
+            {
+                currentUserName = user.Identity.Name; // Or user.FindFirstValue(ClaimTypes.Email) etc.
+            }
+        }
+
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            courses = await TeacherService.GetMyCoursesAsync();
+            if (courses == null)
+            {
+                errorMessage = "Could not load courses. You might not be logged in correctly or an API error occurred.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading courses: {ex.Message}";
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

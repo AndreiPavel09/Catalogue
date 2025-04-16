@@ -17,9 +17,14 @@ builder.Services.AddScoped(sp => new HttpClient
     BaseAddress = new Uri("http://localhost:5039")
 });
 
+builder.Services.AddAuthorizationCore();
+
+builder.Services.AddScoped<AuthenticationStateProvider, ApiAuthenticationStateProvider>();
+
+builder.Services.AddScoped<IAdminApiService, AdminApiService>();
+builder.Services.AddScoped<ITeacherApiService, TeacherApiService>();
 
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
-
 
 await builder.Build().RunAsync();

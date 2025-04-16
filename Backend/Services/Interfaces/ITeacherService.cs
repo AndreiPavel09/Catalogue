@@ -19,5 +19,16 @@ namespace Backend.Services.Interfaces
 
         // Optional: Helper to check if a teacher exists (might be useful)
         Task<bool> TeacherExistsAsync(int teacherId);
+
+        /// <summary>
+        /// Enrolls a student in a course, checking if the teacher teaches the course.
+        /// </summary>
+        Task AddStudentToCourseAsync(int teacherId, int studentId, int courseId);
+
+        /// <summary>
+        /// Removes a student from a course, checking if the teacher teaches the course.
+        /// </summary>
+        Task RemoveStudentFromCourseAsync(int teacherId, int studentId, int courseId);
+        Task<BulkCreateGradesResponseDto> AddGradesBulkAsync(int teacherId, BulkCreateGradesRequestDto request);
     }
 }

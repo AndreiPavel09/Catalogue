@@ -1,0 +1,551 @@
+﻿<!-- FrontendAdmin/Pages/Teacher/CourseDetails.razor -->
+@page "/teacher/course/{CourseId:int}"
+
+@inject ITeacherApiService TeacherService
+@inject NavigationManager NavigationManager
+
+@using Frontend.DTOs
+@using Frontend.Services
+@using System.ComponentModel.DataAnnotations
+
+<h3>Course Details - ID: @CourseId</h3>
+
+@if (isLoading)
+{
+    <p><em>Loading details...</em></p>
+}
+else if (!string.IsNullOrEmpty(loadErrorMessage))
+{
+    <div class="alert alert-danger">@loadErrorMessage</div>
+    <p><a href="/teacher/my-courses">Back to My Courses</a></p>
+}
+else
+{
+    <div class="row mt-3">
+        @* --- Column for Students & Bulk Grade Entry --- *@
+        <div class="col-md-8">
+            @* Make wider for the table *@
+            <h5>Enrolled Students & Grade Entry</h5>
+            @if (gradeEntryList == null || !gradeEntryList.Any())
+            {
+                <p>No students currently enrolled or failed to load.</p>
+            }
+            else
+            {
+                @* Display Bulk Submission results *@
+                @if (bulkSubmitResult != null)
+                {
+                    <div class="alert @(bulkSubmitResult.Errors.Any() ? "alert-warning" : "alert-success")" role="alert">
+                        <h5 class="alert-heading">Bulk Submit Result:</h5>
+                        <p>Successfully added: @bulkSubmitResult.GradesSuccessfullyAdded</p>
+                        @if (bulkSubmitResult.Errors.Any())
+                        {
+                            <p>Errors encountered:</p>
+                            <ul>@foreach (var err in bulkSubmitResult.Errors)
+                                {
+                                    <li>@err</li>
+                                }</ul>
+                        }
+                        <button type="button" class="btn-close float-end" aria-label="Close" @onclick="() => bulkSubmitResult = null"></button>
+                    </div>
+                }
+
+                @* The Form for Bulk Entry *@
+                <EditForm EditContext="@bulkGradeEditContext" OnValidSubmit="HandleBulkGradeSubmit" FormName="bulkGradeForm">
+                    <DataAnnotationsValidator /> @* Validates the whole EditContext *@
+
+                    <table class="table table-sm table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Username</th>
+                                <th>Grade (0-10)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @* Iterate through the view models for the form *@
+                            @foreach (var entryVm in gradeEntryList)
+                            {
+                                <tr>
+                                    <td>@entryVm.StudentFullName</td>
+                                    <td>@entryVm.StudentUsername</td>
+                                    <td>
+                                        @* Use InputNumber bound to the VM's Value *@
+                                        <InputNumber @bind-Value="entryVm.GradeValue" step="0.1" class="form-control form-control-sm grade-input" />
+                                        @* Validation message for THIS specific input in the list *@
+                                        <ValidationMessage For="@(() => entryVm.GradeValue)" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <ValidationSummary /> @* Summary for any overall errors *@
+
+                    <button type="submit" class="btn btn-primary" disabled="@isSubmittingBulkGrades">
+                        @if (isSubmittingBulkGrades)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        Submit All Grades
+                    </button>
+                </EditForm>
+            }
+
+
+            <hr />
+
+            @* --- Section to Add Students --- *@
+            <h5>Add Student to Course</h5>
+            @if (allStudents == null)
+            {
+                <p><em>Loading available students...</em></p>
+            }
+            else
+            {
+                <div class="input-group input-group-sm mb-3">
+                    <InputSelect @bind-Value="selectedStudentIdToAdd" class="form-select">
+                        <option value="0">-- Select Student to Add --</option>
+                        @* Filter out already enrolled students *@
+                        @foreach (var student in allStudents.Where(s => !enrolledStudents.Any(es => es.Id == s.Id)).OrderBy(s => s.FullName))
+                        {
+                            <option value="@student.Id">@student.FullName (@student.Username)</option>
+                        }
+                    </InputSelect>
+                    <button class="btn btn-success"
+                    @onclick="HandleAddStudent"
+                    disabled="@(selectedStudentIdToAdd == 0 || isSubmittingAdd)">
+                        @if (isSubmittingAdd)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+                            <span class="oi oi-plus"></span>
+                        }
+                    </button>
+                </div>
+                @if (!string.IsNullOrEmpty(addStudentErrorMessage))
+                {
+                    <div class="alert alert-danger mt-2 small">@addStudentErrorMessage</div>
+                }
+            }
+
+
+        </div> @* End Student Column *@
+
+        @* --- Column for Grades (Existing) --- *@
+        <div class="col-md-6">
+            <h5>Assign/Update Grade</h5>
+            @if (enrolledStudents == null || !enrolledStudents.Any())
+            {
+                <p class="text-muted"><em>(Add students first)</em></p>
+            }
+            else
+            {
+                @* Existing Grade Entry Form - ensure dropdown uses 'enrolledStudents' *@
+                @if (!string.IsNullOrEmpty(assignGradeErrorMessage))
+                {
+                    <div class="alert alert-danger">@assignGradeErrorMessage</div>
+                }
+                @if (!string.IsNullOrEmpty(assignGradeSuccessMessage))
+                {
+                    <div class="alert alert-success">@assignGradeSuccessMessage</div>
+                }
+                <EditForm Model="@newGradeAssignment" OnValidSubmit="HandleAssignGrade" FormName="assignGradeForm">
+                    @* ... inputs using 'enrolledStudents' for dropdown ... *@
+                    <div class="row g-2 align-items-end">
+                        <div class="col">
+                            <label for="studentGrade" class="form-label">Student:</label>
+                            <InputSelect id="studentGrade" @bind-Value="newGradeAssignment.StudentId" class="form-select form-select-sm">
+                                <option value="">-- Select Enrolled Student --</option>
+                                @foreach (var student in enrolledStudents.OrderBy(s => s.FullName))
+                                {
+                                    <option value="@student.Id">@student.FullName (@student.Username)</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => newGradeAssignment.StudentId)" />
+                        </div>
+                        @* ... Grade Value input and Button ... *@
+                        <div class="col-4">
+                            <label for="gradeValue" class="form-label">Grade (0-10):</label>
+                            <InputNumber id="gradeValue" @bind-Value="newGradeAssignment.Value" step="0.1" class="form-control form-control-sm" />
+                            <ValidationMessage For="@(() => newGradeAssignment.Value)" />
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-sm btn-primary" disabled="@isSubmittingGrade">
+                                @if (isSubmittingGrade)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                                Save Grade
+                            </button>
+                        </div>
+                    </div>
+                    <ValidationSummary class="mt-2" />
+                </EditForm>
+            }
+
+            <hr />
+
+            <h5>Existing Grades for this Course</h5>
+            @if (grades == null || !grades.Any())
+            {
+                <p>No grades recorded yet for this course.</p>
+            }
+            else
+            {
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Grade</th>
+                            <th>ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var grade in grades.OrderBy(g => g.StudentName))
+                        {
+                            <tr>
+                                <td>@grade.StudentName (ID: @grade.StudentId)</td>
+                                <td>@grade.Value.ToString("0.0")</td>
+                                <td>@grade.Id</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div> @* End Grades Column *@
+
+    </div> @* End Row *@
+    <hr />
+    <p><a href="/teacher/my-courses">Back to My Courses</a></p>
+}
+
+
+@code {
+    [Parameter]
+    public int CourseId { get; set; }
+
+    // Data holders
+    private List<UserDto>? enrolledStudents; // Students IN this course
+    private List<GradeDto>? grades;
+    private List<UserDto>? allStudents; // ALL students for the Add dropdown
+
+    // Form models
+    private AssignGradeDto newGradeAssignment = new AssignGradeDto();
+    private int selectedStudentIdToAdd = 0; // For the Add Student dropdown
+    // Use a dedicated ViewModel list for the form
+    private List<GradeEntryViewModel>? gradeEntryList;
+
+    // Form EditContext for bulk grades
+    private EditContext? bulkGradeEditContext;
+    // UI State
+    private bool isLoading = true;
+    private bool isSubmittingBulkGrades = false;
+    private bool isSubmittingGrade = false;
+    private bool isSubmittingAdd = false; // State for adding student
+    private bool isSubmittingRemove = false; // State for removing student
+    private int? studentIdToRemove = null; // Track which student is being removed
+
+    // Error messages
+    private string? loadErrorMessage;
+    private string? assignGradeErrorMessage;
+    private string? assignGradeSuccessMessage;
+    private string? addStudentErrorMessage; // Error for adding student
+    private string? removeStudentErrorMessage;
+
+    private BulkCreateGradesResponseDto? bulkSubmitResult; // Store bulk result
+    // ... other error messages ...
+
+
+    // --- ViewModel for the bulk grade entry table ---
+    public class GradeEntryViewModel
+    {
+        public int StudentId { get; set; }
+        public string? StudentFullName { get; set; }
+        public string? StudentUsername { get; set; }
+
+        // Make Value nullable to distinguish between 'not entered' and '0'
+        // Add validation attributes here for InputNumber binding
+        [Range(typeof(decimal), "0.0", "10.0", ErrorMessage = "Grade must be 0-10 if entered.")]
+        public decimal? GradeValue { get; set; }
+
+        // Helper to convert to DTO for submission
+        public StudentGradeEntryDto? ToGradeEntryDto()
+        {
+            if (GradeValue.HasValue) // Only include if a value was entered
+            {
+                return new StudentGradeEntryDto { StudentId = StudentId, Value = GradeValue.Value };
+            }
+            return null;
+        }
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadCourseData();
+    }
+
+    private async Task LoadCourseData()
+    {
+        isLoading = true;
+        loadErrorMessage = null;
+        bulkSubmitResult = null; // Clear previous results
+        gradeEntryList = null; // Clear previous form data
+        bulkGradeEditContext = null; // Reset EditContext
+        // ... clear other errors ...
+        StateHasChanged();
+
+        var enrolledStudentsTask = LoadEnrolledStudents(); // Still need this
+        var gradesTask = LoadGradesForCourse(); // For display column
+        var allStudentsTask = LoadAllStudents(); // For add/remove section
+
+        await Task.WhenAll(enrolledStudentsTask, gradesTask, allStudentsTask);
+
+        // --- Initialize the Grade Entry Form Model ---
+        if (enrolledStudents != null)
+        {
+            gradeEntryList = enrolledStudents.Select(s => new GradeEntryViewModel
+            {
+                StudentId = s.Id,
+                StudentFullName = s.FullName, // Assuming UserDto has FullName now
+                StudentUsername = s.Username,
+                GradeValue = grades?.FirstOrDefault(g => g.StudentId == s.Id)?.Value // Pre-fill if grade exists
+            }).OrderBy(vm => vm.StudentFullName).ToList();
+
+            // Create EditContext based on the list (or a containing model)
+            // Binding directly to the list is possible but can be tricky.
+            // Often better to have a parent model:
+            // var parentModel = new { Entries = gradeEntryList };
+            // bulkGradeEditContext = new EditContext(parentModel);
+            // For simplicity now, let's assume EditContext works with the list directly or adjust if needed.
+             bulkGradeEditContext = new EditContext(gradeEntryList); // May need adjustment
+        }
+        // --- End Initialize Form Model ---
+
+
+        if (enrolledStudents == null || grades == null || allStudents == null)
+        { /* ... set loadErrorMessage ... */ }
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    // ... LoadEnrolledStudents, LoadGradesForCourse, LoadAllStudents ...
+    // ... HandleAddStudent, HandleRemoveStudent ...
+    // ... AppendLoadError ...
+
+
+    // --- Handler for Bulk Grade Submission ---
+    private async Task HandleBulkGradeSubmit()
+    {
+        if (bulkGradeEditContext == null || gradeEntryList == null) return;
+
+        isSubmittingBulkGrades = true;
+        bulkSubmitResult = null; // Clear previous result
+        StateHasChanged();
+
+        // Validate the entire form first
+        var isValid = bulkGradeEditContext.Validate(); // Triggers validation messages
+
+        if (isValid)
+        {
+             // Filter out entries where no grade was entered and map to DTOs
+            var entriesToSubmit = gradeEntryList
+                .Select(vm => vm.ToGradeEntryDto())
+                .Where(dto => dto != null) // Filter out nulls (where no grade was entered)
+                .ToList();
+
+            if (entriesToSubmit.Any())
+            {
+                try
+                {
+                    bulkSubmitResult = await TeacherService.AddGradesBulkAsync(CourseId, entriesToSubmit!); // Pass non-null list
+                    if (bulkSubmitResult != null) {
+                         await LoadGradesForCourse(); // Refresh existing grades list
+                         // Optionally clear inputs for successfully added grades
+                         // foreach(var vm in gradeEntryList.Where(vm => vm.GradeValue.HasValue && !bulkSubmitResult.Errors.Any(e => e.Contains($"Student ID {vm.StudentId}")))) {
+                         //    vm.GradeValue = null;
+                         // }
+                    } else {
+                        bulkSubmitResult = new BulkCreateGradesResponseDto { Errors = new List<string> { "Received null response from server." } };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    bulkSubmitResult = new BulkCreateGradesResponseDto { Errors = new List<string> { $"An error occurred: {ex.Message}" } };
+                    Console.WriteLine(ex);
+                }
+            } else {
+                 bulkSubmitResult = new BulkCreateGradesResponseDto { Errors = new List<string> { "No new grades were entered to submit." } };
+            }
+        } else {
+             bulkSubmitResult = new BulkCreateGradesResponseDto { Errors = new List<string> { "Please fix validation errors before submitting." } };
+        }
+
+
+        isSubmittingBulkGrades = false;
+        StateHasChanged();
+    }
+
+
+    // Separate load methods
+    private async Task LoadEnrolledStudents()
+    {
+        try
+        {
+            enrolledStudents = await TeacherService.GetStudentsInCourseAsync(CourseId);
+            if (enrolledStudents == null) AppendLoadError($"Failed to load enrolled students.");
+        }
+        catch (Exception ex) { AppendLoadError($"Error loading enrolled students: {ex.Message}"); Console.WriteLine(ex); }
+    }
+    private async Task LoadGradesForCourse()
+    {
+        try
+        {
+            grades = await TeacherService.GetGradesForCourseAsync(CourseId);
+            if (grades == null) AppendLoadError($"Failed to load grades for course {CourseId}.");
+            else
+            {
+                // Populate student names if backend didn't (less ideal)
+                // foreach(var grade in grades.Where(g => string.IsNullOrEmpty(g.StudentName))) {
+                //    grade.StudentName = students?.FirstOrDefault(s => s.Id == grade.StudentId)?.FullName ?? $"ID: {grade.StudentId}";
+                // }
+            }
+        }
+        catch (Exception ex) { AppendLoadError($"Error loading grades: {ex.Message}"); Console.WriteLine(ex); }
+    }
+
+    // New method to load ALL students
+    private async Task LoadAllStudents()
+    {
+        try
+        {
+            // Use Option A or B based on TeacherApiService implementation
+            allStudents = await TeacherService.GetAllStudentsAsync(); // Assuming this uses AdminService or direct call
+            if (allStudents == null) AppendLoadError($"Failed to load student list.");
+        }
+        catch (Exception ex) { AppendLoadError($"Error loading student list: {ex.Message}"); Console.WriteLine(ex); }
+    }
+    private void AppendLoadError(string message) {
+        loadErrorMessage = string.IsNullOrEmpty(loadErrorMessage) ? message : loadErrorMessage + " " + message;
+    }
+
+
+    private async Task HandleAssignGrade()
+    {
+        isSubmittingGrade = true;
+        assignGradeErrorMessage = null;
+        assignGradeSuccessMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            newGradeAssignment.CourseId = CourseId; // Set course ID for the DTO
+
+            var (success, resultGrade, message) = await TeacherService.AssignOrUpdateGradeAsync(newGradeAssignment);
+
+            if (success && resultGrade != null)
+            {
+                assignGradeSuccessMessage = $"Grade {resultGrade.Value} saved successfully for student ID {resultGrade.StudentId}.";
+                newGradeAssignment = new AssignGradeDto(); // Reset form
+                await LoadGradesForCourse(); // Refresh grades list
+                StateHasChanged();
+            }
+            else
+            {
+                assignGradeErrorMessage = message ?? "Failed to save grade.";
+            }
+        } catch (Exception ex)
+        {
+            assignGradeErrorMessage = $"Error saving grade: {ex.Message}";
+            Console.WriteLine(ex);
+        } finally
+        {
+            isSubmittingGrade = false;
+            StateHasChanged();
+            // Optionally clear success message after a delay
+            // await Task.Delay(3000);
+            // assignGradeSuccessMessage = null;
+            // StateHasChanged();
+        }
+    }
+
+    private async Task HandleAddStudent()
+    {
+        if (selectedStudentIdToAdd <= 0)
+        {
+            addStudentErrorMessage = "Please select a student to add.";
+            return;
+        }
+
+        isSubmittingAdd = true;
+        addStudentErrorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var (success, message) = await TeacherService.AddStudentToCourseAsync(CourseId, selectedStudentIdToAdd);
+            if (success)
+            {
+                selectedStudentIdToAdd = 0; // Reset dropdown
+                await LoadEnrolledStudents(); // Refresh enrolled list
+                StateHasChanged(); // Update UI
+            }
+            else
+            {
+                addStudentErrorMessage = message ?? "Failed to add student.";
+            }
+        }
+        catch (Exception ex)
+        {
+            addStudentErrorMessage = $"Error: {ex.Message}";
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            isSubmittingAdd = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleRemoveStudent(int studentId)
+    {
+        // Confirmation Dialog
+        bool confirmed = true;
+        if (!confirmed) return;
+
+
+        studentIdToRemove = studentId; // Track who is being removed
+        isSubmittingRemove = true;
+        removeStudentErrorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var (success, message) = await TeacherService.RemoveStudentFromCourseAsync(CourseId, studentId);
+            if (success)
+            {
+                await LoadEnrolledStudents(); // Refresh enrolled list
+                StateHasChanged(); // Update UI
+            }
+            else
+            {
+                removeStudentErrorMessage = message ?? "Failed to remove student.";
+            }
+        }
+        catch (Exception ex)
+        {
+            removeStudentErrorMessage = $"Error: {ex.Message}";
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            isSubmittingRemove = false;
+            studentIdToRemove = null;
+            StateHasChanged();
+        }
+    }
+}
